@@ -10,12 +10,9 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang.StringUtils;
-import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 //TODO
 @Cmd(name = "tplist",  usage = "/tplist", aliases = {}, enabled = true, label = "", permission = "")

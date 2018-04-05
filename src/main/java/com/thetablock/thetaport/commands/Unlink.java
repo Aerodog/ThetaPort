@@ -4,7 +4,6 @@ import com.thetablock.thetaport.services.PortServices;
 import com.thetablock.thetaport.utils.Response;
 import com.thetablock.thetaport.utils.cmdManager.Cmd;
 import org.apache.commons.cli.Options;
-import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 
 @Cmd(name = "tpunlink", usage = "/unlink", aliases = {}, enabled = true, label = "", permission = "")

@@ -3,7 +3,6 @@ package com.thetablock.thetaport.commands;
 import com.thetablock.thetaport.services.PortServices;
 import com.thetablock.thetaport.utils.cmdManager.Cmd;
 import com.thetablock.thetaport.utils.cmdManager.Description;
-import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 
 @Cmd(name = "tpsched", usage = "/create", aliases = {}, enabled = false, label = "", permission = "")

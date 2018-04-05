@@ -1,9 +1,6 @@
 package com.thetablock.thetaport.listeners;
 
-        import com.google.inject.Guice;
-        import com.google.inject.Injector;
         import com.thetablock.thetaport.commands.Injectors;
-        import com.thetablock.thetaport.configs.InjectorHandler;
         import com.thetablock.thetaport.services.EventServices;
         import com.thetablock.thetaport.services.PortServices;
         import org.bukkit.entity.Player;

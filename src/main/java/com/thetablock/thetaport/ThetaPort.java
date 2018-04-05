@@ -1,17 +1,12 @@
 package com.thetablock.thetaport;
 
-import com.google.inject.Guice;
-import com.google.inject.Injector;
 import com.thetablock.thetaport.commands.*;
 import com.thetablock.thetaport.commands.Point;
-import com.thetablock.thetaport.configs.InjectorHandler;
 import com.thetablock.thetaport.listeners.OnMoveHandler;
 import com.thetablock.thetaport.services.EventServices;
 import com.thetablock.thetaport.services.PortServices;
 import com.thetablock.thetaport.utils.cmdManager.RegisteredCommands;
 import org.bukkit.plugin.java.JavaPlugin;
-
-import java.awt.*;
 
 public class ThetaPort  extends JavaPlugin implements Injectors {
 //    Injector inject = Guice.createInjector(new InjectorHandler());
