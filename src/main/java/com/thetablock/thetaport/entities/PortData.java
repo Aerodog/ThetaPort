@@ -1,6 +1,7 @@
 package com.thetablock.thetaport.entities;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 public class PortData {
@@ -13,38 +14,35 @@ public class PortData {
     private PortLoc ceilPoint;
     private PortLoc warpToPoint;
     @JsonIgnore
-    private LocalTime lastPortTime;
+    private LocalDateTime lastPortTime;
     private boolean isEnabled;
     private int warpOffset; //nopte this is in seconds
-    private boolean isTimed;
-    private Runnable runnable;
 
-    /*
-    Noted input type for this command is Seconds, it is being parsed byt the command.
-     */
-    public PortData(String name, String linked, PortLoc floorPoint, PortLoc ceilPoint, PortLoc warpToPoint, boolean isEnabled, int timeBetweenPorts) {
+    public PortData(String name, String linked, String warpMessage, String arrivalMessage, String departureMessage, PortLoc floorPoint, PortLoc ceilPoint, PortLoc warpToPoint, LocalDateTime lastPortTime, boolean isEnabled, int warpOffset) {
         this.name = name;
         this.linked = linked;
+        this.warpMessage = warpMessage;
+        this.arrivalMessage = arrivalMessage;
+        this.departureMessage = departureMessage;
         this.floorPoint = floorPoint;
         this.ceilPoint = ceilPoint;
-        this.isEnabled = isEnabled;
-        this.warpOffset = timeBetweenPorts;
         this.warpToPoint = warpToPoint;
-        this.lastPortTime = LocalTime.now();
-        isTimed = false;
+        this.lastPortTime = lastPortTime;
+        this.isEnabled = isEnabled;
+        this.warpOffset = warpOffset;
     }
 
     public PortData() {
-        this.lastPortTime = LocalTime.now();
+
     }
 
     @JsonIgnore
-    private LocalTime getOffset(int amount) {
-        return LocalTime.now().plusMinutes(warpOffset).minusSeconds(warpOffset / amount);
+    private LocalDateTime getOffset(int amount) {
+        return LocalDateTime.now().plusMinutes(warpOffset).minusSeconds(warpOffset / amount);
     }
 
     public String getName() {
-        return name;
+        return !name.isEmpty() ? name : "DERP";
     }
 
     public PortData setName(String name) {
@@ -116,12 +114,12 @@ public class PortData {
     }
 
     @JsonIgnore
-    public LocalTime getLastPortTime() {
+    public LocalDateTime getLastPortTime() {
         return lastPortTime;
     }
 
     @JsonIgnore
-    public PortData setLastPortTime(LocalTime lastPortTime) {
+    public PortData setLastPortTime(LocalDateTime lastPortTime) {
         this.lastPortTime = lastPortTime;
         return this;
     }
@@ -143,40 +141,4 @@ public class PortData {
         this.warpOffset = warpOffset;
         return this;
     }
-
-    public boolean isTimed() {
-        return isTimed;
-    }
-
-    public PortData setTimed(boolean timed) {
-        isTimed = timed;
-        return this;
-    }
-
-    public Runnable getRunnable() {
-        return runnable;
-    }
-
-    public PortData setRunnable(Runnable runnable) {
-        this.runnable = runnable;
-        return this;
-    }
-
-    @Override
-    public String toString() {
-        return "PortData{" +
-                "name='" + name + '\'' +
-                ", linked='" + linked + '\'' +
-                ", warpMessage='" + warpMessage + '\'' +
-                ", arrivalMessage='" + arrivalMessage + '\'' +
-                ", departureMessage='" + departureMessage + '\'' +
-                ", floorPoint=" + floorPoint +
-                ", ceilPoint=" + ceilPoint +
-                ", isEnabled=" + isEnabled +
-                ", warpOffset=" + warpOffset +
-                ", isTimed=" + isTimed +
-                ", warpToPoint=" + warpToPoint +
-                '}';
-    }
-
 }

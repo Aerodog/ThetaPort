@@ -2,7 +2,7 @@ package com.thetablock.thetaport.commands;
 
 import com.thetablock.thetaport.entities.PortData;
 import com.thetablock.thetaport.services.PortServices;
-import com.thetablock.thetaport.utils.Response;
+import com.thetablock.thetaport.enums.Response;
 import com.thetablock.thetaport.utils.Tuple2;
 import com.thetablock.thetaport.utils.cmdManager.Cmd;
 import org.bukkit.command.CommandSender;
@@ -37,7 +37,7 @@ public class WarpInfo extends CommandHandler implements Injectors {
                         sender.sendMessage("Arrival Message: " + wd.getArrivalMessage());
                         sender.sendMessage("Departure Message: " + wd.getDepartureMessage());
                     }
-                    case INVALID_WARP: {
+                    case INVALID_PORT: {
                         sender.sendMessage("The warp you are trying to load ");
                     }
 

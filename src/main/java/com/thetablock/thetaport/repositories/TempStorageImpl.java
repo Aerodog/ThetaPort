@@ -1,23 +1,16 @@
 package com.thetablock.thetaport.repositories;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 import com.thetablock.thetaport.entities.PortLoc;
 
 import javax.inject.Singleton;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
+import java.util.*;
 
 @Singleton
 public class TempStorageImpl implements TempStorageRepository {
     private Multimap<UUID, PortLoc> warpLocList = ArrayListMultimap.create();
-    private Cache<UUID, String> tempDisableWarp = CacheBuilder.newBuilder()
-            .expireAfterWrite(30, TimeUnit.SECONDS)
-            .build();
+    private Map<UUID, String> tempDisableWarp = new HashMap<>();
     private List<UUID> overrideProtocols = new ArrayList<>();
 
     @Override
@@ -54,7 +47,7 @@ public class TempStorageImpl implements TempStorageRepository {
 
 
     @Override
-    public Cache<UUID, String> getTempDisabledList() {
+    public Map<UUID, String> getTempDisabledList() {
         return tempDisableWarp;
     }
 
@@ -66,12 +59,12 @@ public class TempStorageImpl implements TempStorageRepository {
 
     @Override
     public boolean deleteTempWarp(UUID uuid) {
-        tempDisableWarp.invalidate(uuid);
+        tempDisableWarp.remove(uuid);
         return true;
     }
 
     @Override
     public String getTempDisabledPort(UUID uuid) {
-        return tempDisableWarp.getIfPresent(uuid);
+        return tempDisableWarp.getOrDefault(uuid, "");
     }
 }

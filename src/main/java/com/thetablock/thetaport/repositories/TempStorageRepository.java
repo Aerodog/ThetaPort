@@ -1,12 +1,12 @@
 package com.thetablock.thetaport.repositories;
 
-import com.google.common.cache.Cache;
 import com.thetablock.thetaport.entities.PortLoc;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
-public interface TempStorageRepository {
+public interface  TempStorageRepository {
     int getCount(UUID uuid);
 
     int addEntry(UUID uuid, PortLoc portLoc);
@@ -19,7 +19,7 @@ public interface TempStorageRepository {
 
     void removeEntries(UUID uuid);
 
-    Cache<UUID, String> getTempDisabledList();
+    Map<UUID, String> getTempDisabledList();
 
     boolean put(UUID uuid, String warpName);
 

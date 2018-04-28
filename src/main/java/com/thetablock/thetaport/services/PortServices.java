@@ -1,16 +1,20 @@
 package com.thetablock.thetaport.services;
 
-import com.thetablock.thetaport.entities.MessageType;
+import com.google.common.base.Splitter;
 import com.thetablock.thetaport.entities.PortData;
 import com.thetablock.thetaport.entities.PortLoc;
+import com.thetablock.thetaport.enums.EnumSetTypes;
 import com.thetablock.thetaport.repositories.TempStorageRepository;
-import com.thetablock.thetaport.repositories.TimerRepositories;
-import com.thetablock.thetaport.utils.Response;
+import com.thetablock.thetaport.repositories.TimerRepository;
+import com.thetablock.thetaport.enums.Response;
 import com.thetablock.thetaport.repositories.PortDataRepository;
 import com.thetablock.thetaport.utils.Tuple2;
+import org.apache.commons.lang.StringUtils;
 import org.bukkit.Location;
 
 import javax.inject.Inject;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -20,7 +24,7 @@ public final class PortServices {
     @Inject
     PortDataRepository portDataRepository;
     @Inject
-    TimerRepositories timerRepository;
+    TimerRepository timerRepository;
     @Inject
     TempStorageRepository tempStorageRepo;
 
@@ -43,25 +47,14 @@ public final class PortServices {
         }
         return Response.ERROR;
     }
-
-    private int parseOffset(String offset) {
-        int multiplier = 1;
-
-        if (offset.contains("m")) {
-            multiplier = 60;
-        } else if (offset.contains("h")) {
-            multiplier = 120;
-        }
-        offset = offset.replaceAll("[^\\d.]", "");
-        return Integer.valueOf(offset) * multiplier;
-    }
-    /**
+        /**
      * @param uuid
      * @param warp
-     * @param offsetInSeconds
+     * @param arrivalMessage
+     * @param departureMessage
      * @return {@link Response#SUCCESS}, {@link Response#WARP_EXISTS}, {@link Response#REQUIRE_TWO_POINTS}
      */
-    public Response createWarp(UUID uuid, String warp, String unparsedOffset, boolean isDisabled) {
+    public Response createPort(UUID uuid, String warp, String unparsedOffset, boolean isDisabled, String arrivalMessage, String departureMessage, Optional<String> linked) {
         // PortData warpData = portDataRepository.getWarp(warp);
         List<PortLoc> points = tempStorageRepo.getTempPoints(uuid);
         int count = tempStorageRepo.getCount(uuid);
@@ -72,48 +65,70 @@ public final class PortServices {
                 PortLoc floor = points.get(0).compareWarpLoc(points.get(1));
                 PortLoc ceil = points.get(1).equals(floor) ? points.get(0) : points.get(1);
 
-                int offset = unparsedOffset.isEmpty() ? 0 : parseOffset(unparsedOffset);
+                int offset = 0;
+                if (!unparsedOffset.isEmpty()) {
+                    List<String> splitter = Splitter.on("(?<=\\D)(?=\\d)").splitToList(unparsedOffset);
+                    if (StringUtils.isNumeric(splitter.get(0))) {
+                        offset = Integer.valueOf(splitter.get(0));
+                        if (splitter.get(0).equalsIgnoreCase("m")) {
+                            offset = offset * 60;
+                        } else if (splitter.get(0).equalsIgnoreCase("h")) {
+                            offset = offset * 120;
+                        } else if (splitter.get(0).equalsIgnoreCase("d")) {
+                            offset = offset * 86400;
+                        } else {
+                            return Response.INVALID_OFFSET;
+                        }
+                    }
+                }
 
-                PortData portData = new PortData(warp, null, floor, ceil, centerPoint, false,offset);
-                portDataRepository.createNewWarp(portData, true);
-                tempStorageRepo.invalidate(uuid);
-                return Response.SUCCESS;
+                if (offset >= 0) {
+                    // public PortData(String name, String linked, String warpMessage, String arrivalMessage, String departureMessage, PortLoc floorPoint, PortLoc ceilPoint, PortLoc warpToPoint, LocalTime lastPortTime, boolean isEnabled, int warpOffset, boolean isTimed, Runnable runnable) {
+                    PortData portData = new PortData(warp, null, "", arrivalMessage, departureMessage, floor, ceil, centerPoint, LocalDateTime.now(),
+                            true, offset);
+                    portDataRepository.createNewWarp(portData, true);
+
+                    if (linked.isPresent()) {
+                        Response response = this.link(portData.getName(), linked.get(), "", true);
+
+                        switch (response) {
+                            case SUCCESS:
+                                return Response.SUCCESS;
+                            case INVALID_PORT:
+                                return Response.SUCCESS_INVALID_LINK;
+                        }
+                    }
+                    linked.ifPresent(l->{
+
+
+                    });
+                    tempStorageRepo.invalidate(uuid);
+                    return Response.SUCCESS;
+                }
+                return Response.INVALID_OFFSET;
             }
             return Response.WARP_EXISTS;
         }
         return Response.REQUIRE_TWO_POINTS;
     }
 
-    /**
-     * @param warp
-     * @param clean
-     * @param unlink
-     * @return {@link Response#SUCCESS}, {@link Response#WARP_NOT_LINKED}, {@link Response#WARP_DOES_NOT_EXIST}
-     */
-    public Response deleteWarp(String warp, boolean clean, boolean unlink) {
+
+
+    public Response deleteWarp(String warp, boolean clean, boolean confirmed) {
         PortData portData = portDataRepository.getWarp(warp);
 
-        if (unlink) {
-            if (null != portData.getLinked() && !portData.getLinked().isEmpty()) {
-                PortData warp2 = portDataRepository.getWarp(portData.getLinked());
-                portData.setLinked("");
-                return Response.SUCCESS;
-
-            }
-            return Response.WARP_NOT_LINKED;
-        }
         if (null != portData) {
-            deleteWarp(warp);
-            if (null != portData.getLinked()) {
-                deleteWarp(warp);
-            }
-            return Response.SUCCESS;
+           if (clean) {
+               if (confirmed) {
+                   deleteWarp(portData.getLinked(), false, true);
+               } else {
+                   return Response.REQUIRE_CONFIRMED;
+               }
+           }
+           portDataRepository.deleteWarp(warp);
+           return Response.SUCCESS;
         }
-        return Response.WARP_DOES_NOT_EXIST;
-    }
-
-    private void deleteWarp(String warp) {
-        portDataRepository.deleteWarp(warp);
+        return Response.INVALID_PORT;
     }
 
     /**
@@ -121,7 +136,7 @@ public final class PortServices {
      * @param second
      * @param sync
      * @param roundTrip
-     * @return {@link Response#SUCCESS}, {@link Response#WARP_NOT_LINKED}, {@link Response#INVALID_WARP}
+     * @return {@link Response#SUCCESS}, {@link Response#WARP_NOT_LINKED}, {@link Response#INVALID_PORT}
      */
     public Response link(final String first, final String second, String sync, boolean roundTrip) {
         PortData firstPoint = portDataRepository.getWarp(first);
@@ -145,35 +160,41 @@ public final class PortServices {
                         }
                     }
                     //Updates all the data and saves it to the system.
+                    portDataRepository.deleteWarp(first);
+                    portDataRepository.deleteWarp(second);
                     portDataRepository.update(firstPoint, secondPoint);
                     return Response.SUCCESS;
                 }
             }
             return Response.POINT_ALREADY_LINKED;
         }
-        return Response.INVALID_WARP;
+        return Response.INVALID_PORT;
     }
-    /**
-     * @param node
-     * @param type
-     * @param message
-     * @return {@link Response#SUCCESS}, {@link Response#INVALID_MESSAGE_TYPE}, {@link Response#WARP_DOES_NOT_EXIST}
-     */
-    public Response setMessage(String node, MessageType type, String message) {
-        PortData firstPoint = portDataRepository.getWarp(node);
-        if (null != firstPoint) {
-            if (type.equals(MessageType.ARRIVAL)) {
-                firstPoint.setArrivalMessage(message);
-                return Response.SUCCESS;
 
-            } else if (type.equals(MessageType.DEPARTURE)) {
-                firstPoint.setDepartureMessage(message);
-                return Response.SUCCESS;
+    public Response setArrivalMessage(String portName, String message) {
+        PortData portData = portDataRepository.getWarp(portName);
 
-            }
-            return Response.INVALID_MESSAGE_TYPE;
+        if (null != portData) {
+            message = message.replaceAll("&", "§");
+            portData.setArrivalMessage(message);
+            portDataRepository.deleteWarp(portName);
+            portDataRepository.update(portData);
+            return Response.SUCCESS;
         }
-        return Response.WARP_DOES_NOT_EXIST;
+        return Response.INVALID_PORT;
+    }
+
+    public Response setDepatureMessage(String portName, String message) {
+        PortData portData = portDataRepository.getWarp(portName);
+
+        if (null != portData) {
+            message = message.replaceAll("&", "§");
+            portData.setDepartureMessage(message);
+            portDataRepository.deleteWarp(portName);
+            portDataRepository.update(portData);
+            return Response.SUCCESS;
+        }
+        return Response.INVALID_PORT;
     }
 
     public List<PortData> getWarpData(int page) {
@@ -196,37 +217,51 @@ public final class PortServices {
                 }
                 return Response.WARP_NOT_LINKED;
             }
-        return Response.INVALID_WARP;
+        return Response.INVALID_PORT;
     }
 
     public Tuple2<Response, List<String>> getLinkedList(int page) {
-        int limit = 5;
-        int offset = page * limit + 1;
-        Collection<PortData> portDataList = portDataRepository.getWarpData().values();
+        int itemsPerPage = 5;
+        int offset = (page - 1) * itemsPerPage;
+        List<String> ignoreList = new ArrayList<>();
         List<String> results = new ArrayList<>();
         Response response;
 
-        if (page > 0 && portDataList.size() > offset) {
-            portDataList.stream()
-                    .filter(wd-> null != wd.getLinked() && !wd.getLinked().isEmpty())
-                    .forEach(wd->{
-                        PortData linked = portDataRepository.getWarp(wd.getLinked());
 
-                        if (linked.getLinked().equals(wd.getName())) {
-                            results.add(wd.getName() + " <------> " + wd.getLinked());
-                            portDataList.remove(wd);
-                        } else {
-                            results.add(wd.getName() + " -------> " + wd.getLinked());
+        if (page > 0 && portDataRepository.getWarpData().values().size() > offset) {
 
+            final int max = portDataRepository.getWarpData().values().stream()
+                    .map(m->m.getName().length())
+                    .max(Integer::compare).orElse(0);
+
+            for (PortData portData : portDataRepository.getWarpData().values()) {
+                if (null != portData.getLinked() && !portData.getLinked().isEmpty()) {
+                    if (!ignoreList.contains(portData.getName())) {
+                        int space = ((max - portData.getName().length()) + portData.getName().length()) + 3;
+                        space = portData.getName().length() == max ? space -2 : space;
+                        PortData linkedPort = portDataRepository.getWarp(portData.getLinked());
+                        String status = " -------> ";
+
+                        if (!linkedPort.getLinked().isEmpty() && linkedPort.getLinked().equalsIgnoreCase(portData.getName())) {
+                            status = " <------> ";
+                            ignoreList.add(portData.getLinked());
                         }
-                        portDataList.remove(wd);
-
-                    });
+                        results.add(String.format("%-" + space + "s %-1s %-2s","§3" + portData.getName(),"§9" + status, "§A" + portData.getLinked()));
+                    }
+                }
+            }
             response = Response.SUCCESS;
         } else {
             response = Response.PAGE_OUT_OF_RANGE;
         }
-        return new Tuple2<Response, List<String>>(response, results);
+        return new Tuple2<>(response, results);
+    }
+
+    private String formatter(String first, String second, int max, boolean isBiDirectional) {
+        final int space = max - first.length();
+        final String marker = (isBiDirectional) ? " <------> " : " -------> ";
+
+        return String.format("%-" + space + "s %-2s", first  + marker + second);
     }
 
     public Tuple2<Response, List<String>> getUnlinked(int page) {
@@ -242,7 +277,7 @@ public final class PortServices {
     }
 
     public Tuple2<Response,List<String>> getPortsByPage(int page) {
-        return null;
+        return new Tuple2<>(Response.DISABLED, new ArrayList<>());
     }
 
     public Tuple2<Response,List<String>> getNearbyWarps(Location location) {
@@ -260,8 +295,36 @@ public final class PortServices {
         if (null != portData) {
             response = Response.SUCCESS;
         } else {
-            response = Response.INVALID_WARP;
+            response = Response.INVALID_PORT;
         }
         return new Tuple2<>(response, portData);
+    }
+
+    public void set(Location location, String enumSetTypes, String value) {
+        final PortLoc portLoc = new PortLoc(location);
+
+        Optional<PortData> optionalPortData = portDataRepository.getWarpData().values().stream()
+                .filter(pd->portLoc.isWithinBounds(pd.getFloorPoint(), pd.getCeilPoint()))
+                .findFirst();
+
+        if (optionalPortData.isPresent()) {
+            PortData portData = optionalPortData.get();
+            EnumSetTypes setType = EnumSetTypes.valueOf(enumSetTypes);
+
+            switch (setType) {
+                case OFFSET:
+
+                    break;
+                case NAME:
+                    break;
+                case LINK:
+                    break;
+                case FLOOR:
+                    break;
+                case CEIL:
+
+            }
+
+        }
     }
 }

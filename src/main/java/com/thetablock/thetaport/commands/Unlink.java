@@ -1,14 +1,12 @@
 package com.thetablock.thetaport.commands;
 
 import com.thetablock.thetaport.services.PortServices;
-import com.thetablock.thetaport.utils.Response;
+import com.thetablock.thetaport.enums.Response;
 import com.thetablock.thetaport.utils.cmdManager.Cmd;
 import org.apache.commons.cli.Options;
 import org.bukkit.command.CommandSender;
 
 @Cmd(name = "tpunlink", usage = "/unlink", aliases = {}, enabled = true, label = "", permission = "")
-
-
 public class Unlink extends CommandHandler implements Injectors {
     private PortServices portServices = injector.getInstance(PortServices.class);
 
@@ -22,10 +20,13 @@ public class Unlink extends CommandHandler implements Injectors {
             switch (response) {
                 case SUCCESS:
                     sender.sendMessage("§2" + args[0] + " §3has been unlinked.");
-                case INVALID_WARP:
+                    break;
+                case INVALID_PORT:
                     sender.sendMessage("§4 invalid port.");
+                    break;
                 case WARP_NOT_LINKED:
                     sender.sendMessage("§4" + args[0] + " is not linked.");
+                    break;
             }
         }
         return false;

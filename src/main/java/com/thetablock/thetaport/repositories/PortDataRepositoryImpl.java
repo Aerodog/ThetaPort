@@ -8,6 +8,8 @@ import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.inject.Singleton;
 import com.thetablock.thetaport.entities.PortData;
 import org.bukkit.Bukkit;
@@ -15,6 +17,8 @@ import org.bukkit.entity.Player;
 
 import java.io.*;
 import java.nio.file.Files;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
@@ -23,7 +27,7 @@ import java.util.stream.Collectors;
 public class PortDataRepositoryImpl implements PortDataRepository {
     private File file = Bukkit.getPluginManager().getPlugin("ThetaPort").getDataFolder();
     private LoadingCache<String, PortData> warpDataMap = CacheBuilder.newBuilder()
-            .concurrencyLevel(4)
+           // .concurrencyLevel(4)
             .build(new CacheLoader<String, PortData>() {
                 @Override
                 public PortData load(String key) {
@@ -31,17 +35,31 @@ public class PortDataRepositoryImpl implements PortDataRepository {
                 }
             });
 
+    Gson gson = new GsonBuilder()
+            .setPrettyPrinting()
+            .excludeFieldsWithoutExposeAnnotation()
+            .serializeNulls()
+            .disableHtmlEscaping()
+            .create();
+
     public PortDataRepositoryImpl() {
-        File tempFile = new File(file + "/warps");
-        Arrays.stream(tempFile.listFiles()).forEach(f -> {
-            ObjectMapper mapper = new ObjectMapper();
-            try {
-                PortData portData = mapper.readValue(f, PortData.class);
-                this.warpDataMap.put(f.getName(), portData);
-            } catch (IOException ignored) {
-                ignored.printStackTrace();
-            }
-        });
+        File tempFile = new File(file + "/ports");
+
+        if (null != tempFile.listFiles()) {
+            Arrays.stream(tempFile.listFiles()).forEach(f -> {
+                //   PortData portData = gson.fromJson(f, PortData.class);
+                ObjectMapper mapper = new ObjectMapper();
+                try {
+                    PortData portData = mapper.readValue(f, PortData.class);
+                    this.warpDataMap.put(f.getName(), portData);
+                    portData.setLastPortTime(LocalDateTime.now());
+                    warpDataMap.put(portData.getName(), portData);
+                } catch (IOException ignored) {
+                    ignored.printStackTrace();
+                    System.out.println("An error has occurred while trying to load ports.");
+                }
+            });
+        }
     }
 
     private Multimap<String, Player> activeTransit = ArrayListMultimap.create();
@@ -64,10 +82,12 @@ public class PortDataRepositoryImpl implements PortDataRepository {
     }
 
     private boolean saveData(PortData portData) {
+        String json = gson.toJson(portData);
+//        Files.write(json, file);
         ObjectMapper mapper = new ObjectMapper();
         try {
             // gson.toJson(portData.getCeilPoint(), new FileWriter( file + "/warps/" + portData.getName() + ".json"));
-            mapper.writeValue(new FileWriter(file + "/warps/" + portData.getName() + ".json"), portData);
+            mapper.writeValue(new FileWriter(file + "/ports/" + portData.getName() + ".json"), portData);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -134,6 +154,12 @@ public class PortDataRepositoryImpl implements PortDataRepository {
     }
 
     @Override
+    public void softUpdate(PortData portData) {
+        warpDataMap.invalidate(portData.getName());
+        warpDataMap.put(portData.getName(), portData);
+    }
+
+    @Override
     public void update(PortData... firstPoint) {
         for (PortData portData : firstPoint) {
             try {
@@ -144,8 +170,6 @@ public class PortDataRepositoryImpl implements PortDataRepository {
             } catch (IOException e) {
                 e.printStackTrace();
             }
-
-
         }
     }
 

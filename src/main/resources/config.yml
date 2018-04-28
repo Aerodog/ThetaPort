@@ -1,0 +1,8 @@
+general:
+  debug-mode: 3
+  allow-no-offset: true
+  allow-one-way-routing: true #This will allow the config to go in a single direction but not return.
+  allow-multi-routing: false #Allows jumping from x > y > z
+  min-offset-time: 5s
+  max-offset-time: 30m
+

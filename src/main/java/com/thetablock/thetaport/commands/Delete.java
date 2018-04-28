@@ -1,7 +1,7 @@
 package com.thetablock.thetaport.commands;
 
 import com.thetablock.thetaport.services.PortServices;
-import com.thetablock.thetaport.utils.Response;
+import com.thetablock.thetaport.enums.Response;
 import com.thetablock.thetaport.utils.cmdManager.Cmd;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
@@ -12,7 +12,7 @@ import org.bukkit.command.CommandSender;
 public class Delete extends CommandHandler  implements Injectors {
     PortServices portServices = injector.getInstance(PortServices.class);
 
-    private final String permission = "";
+    private final String permission = "thetaport.delete";
 
     Options options = new Options()
             .addOption("cs", "clean", false, "Cleans all links and linked objects (Note this will delete the other node as well.")

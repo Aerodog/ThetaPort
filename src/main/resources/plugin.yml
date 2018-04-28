@@ -1,5 +1,5 @@
 name: ThetaPort
 version: 1.4.0
-main: ThetaPort
+main: com.thetablock.thetaport.ThetaPort
 description: Test
 commands:

@@ -19,6 +19,8 @@ public interface PortDataRepository {
 
     Map<String, PortData> getWarpData();
 
+    void softUpdate(PortData portData);
+
     void update(PortData... firstPoint);
 
     int loadAll();

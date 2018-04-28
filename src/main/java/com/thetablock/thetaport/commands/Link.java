@@ -1,7 +1,7 @@
 package com.thetablock.thetaport.commands;
 
 import com.thetablock.thetaport.services.PortServices;
-import com.thetablock.thetaport.utils.Response;
+import com.thetablock.thetaport.enums.Response;
 import com.thetablock.thetaport.utils.cmdManager.Cmd;
 import com.thetablock.thetaport.utils.cmdManager.Description;
 import org.apache.commons.cli.CommandLine;
@@ -37,8 +37,8 @@ public class Link extends CommandHandler  implements Injectors {
 
                     switch (response) {
                         case SUCCESS:
-                            sender.sendMessage("§2" +args[0] + "§3 has been successfully unlinked");
-                        case INVALID_WARP:
+                            sender.sendMessage("§3" +args[0] + "§3 has been successfully unlinked");
+                        case INVALID_PORT:
                             sender.sendMessage("§4The warp you are trying to unlink does not exist.");
                         case WARP_NOT_LINKED:
                             sender.sendMessage("§4The warp you are trying to");
@@ -56,7 +56,7 @@ public class Link extends CommandHandler  implements Injectors {
                         case LINK_SYNC_FAILED:
                             sender.sendMessage("§4Port time sync has failed.");
                             break;
-                        case INVALID_WARP:
+                        case INVALID_PORT:
                             sender.sendMessage("§4The warp you are trying to link does not exist.");
                             break;
                     }

@@ -2,7 +2,7 @@ package com.thetablock.thetaport.commands;
 
 import com.thetablock.thetaport.entities.PortLoc;
 import com.thetablock.thetaport.services.PortServices;
-import com.thetablock.thetaport.utils.Response;
+import com.thetablock.thetaport.enums.Response;
 import com.thetablock.thetaport.utils.cmdManager.Cmd;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;

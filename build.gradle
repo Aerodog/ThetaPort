@@ -8,6 +8,11 @@ version '1.0-SNAPSHOT'
 apply plugin: 'java'
 apply plugin: 'com.github.johnrengelman.shadow'
 
+def location = "D:\\Servers\\Spigot 1.8"
+libsDirName=  location + "\\plugins"
+
+
+
 compileJava.options.encoding = 'UTF-8'
 
 sourceCompatibility = 1.8
@@ -26,4 +31,12 @@ dependencies {
 
 
     //compile group: 'org.bukkit', name: 'bukkit', version:'LATEST'
+}
+
+task runJar() << {
+    javaexec {
+        main="-jar"; args "D:\\Servers\\Spigot 1.8\\PaperSpigot-Latest.jar";
+        workingDir = "D:\\Servers\\Spigot 1.8"
+        //  classpath = "D:\\Servers\\Spigot 1.8\\"
+    }
 }

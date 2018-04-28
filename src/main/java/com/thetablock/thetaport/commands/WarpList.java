@@ -1,7 +1,7 @@
 package com.thetablock.thetaport.commands;
 
 import com.thetablock.thetaport.services.PortServices;
-import com.thetablock.thetaport.utils.Response;
+import com.thetablock.thetaport.enums.Response;
 import com.thetablock.thetaport.utils.Tuple2;
 import com.thetablock.thetaport.utils.cmdManager.Cmd;
 import com.thetablock.thetaport.utils.cmdManager.Description;
@@ -23,20 +23,10 @@ public class WarpList extends CommandHandler implements Injectors {
 
     private Options options = new Options()
             .addOption("i", "info", false, "shows full information about the  warps.")
-            .addOption(Option.builder().argName("l").longOpt("l")
-                    .desc("Lists all linked ")
-                    .optionalArg(true)
-                    .hasArg(true)
-                    .numberOfArgs(1)
-                    .build())
-            .addOption(Option.builder()
-                    .argName("ul")
-                    .longOpt("ul")
-                    .desc("Lists all unlinked ")
-                    .optionalArg(true)
-                    .hasArg(true)
-                    .numberOfArgs(1)
-                    .build());
+            .addOption(Option.builder().argName("l").longOpt("l").desc("Lists all linked ").optionalArg(true)
+                    .hasArg(true).numberOfArgs(1).build())
+            .addOption(Option.builder().argName("ul").longOpt("ul").desc("Lists all unlinked ").optionalArg(true)
+                    .hasArg(true).numberOfArgs(1).build());
 
     @Override
     public boolean execute(CommandSender sender, String commandLabel, String[] args) {
@@ -59,19 +49,20 @@ public class WarpList extends CommandHandler implements Injectors {
             }
             listTuple2 = portServices.getLinkedList(page);
         } else if (cmdLine.hasOption("ul")) {
-
             String optionValue = cmdLine.getOptionValue("ul");
             if (StringUtils.isNumeric(optionValue)) {
                 page = Integer.valueOf(optionValue);
             }
-            listTuple2 = portServices.getLinkedList(page);
+            listTuple2 = portServices.getUnlinked(page);
         } else {
             listTuple2 = portServices.getPortsByPage(page);
         }
 
+        sender.sendMessage("Current Linked Warps");
+        listTuple2.getValue().forEach(sender::sendMessage);
+
         if (listTuple2.getValue().size() > 0) {
-            listTuple2.getValue().forEach(sender::sendMessage);
         }
-        return false;
+        return true;
     }
 }

@@ -7,9 +7,6 @@ import org.bukkit.Location;
 
 public class PortLoc extends Point3D {
     private String world;
-//    private Double x;
-//    private Double y;
-//    private Double z;
 
     public PortLoc(String world, Double x, Double y, Double z) {
         super(x,y,z);
@@ -23,9 +20,6 @@ public class PortLoc extends Point3D {
     @JsonIgnore
     public PortLoc(Location location) {
         super(location.getX(), location.getY(), location.getZ());
-//        this.x = location.getX();
-//        this.y = location.getY();
-//        this.z = location.getZ();
         world = location.getWorld().getName();
     }
 
@@ -66,5 +60,18 @@ public class PortLoc extends Point3D {
 
     public String getWorld() {
         return world;
+    }
+
+    public boolean isWithinBounds(PortLoc lower, PortLoc upper) {
+        double x1 = Math.min(lower.getX(), upper.getX());
+        double y1 = Math.min(lower.getY(), upper.getY());
+        double z1 = Math.min(lower.getZ(), upper.getZ());
+        double x2 = Math.max(lower.getX(), upper.getX());
+        double y2 = Math.max(lower.getY(), upper.getY());
+        double z2 = Math.max(lower.getZ(), upper.getZ());
+
+        return this.getX() >= x1 && this.getX() <= x2
+                && getY() >= y1 && getY() <= y2
+                && getZ() >= z1 && getZ() <= z2;
     }
 }

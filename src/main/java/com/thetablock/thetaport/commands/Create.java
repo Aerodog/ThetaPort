@@ -1,25 +1,32 @@
 package com.thetablock.thetaport.commands;
 
 import com.thetablock.thetaport.services.PortServices;
-import com.thetablock.thetaport.utils.Response;
+import com.thetablock.thetaport.enums.Response;
 import com.thetablock.thetaport.utils.cmdManager.Cmd;
 import com.thetablock.thetaport.utils.cmdManager.Description;
 import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+
+import java.util.Optional;
+
 //tpcreate warpName -os 30m --disabled
 @Cmd(name = "tpcreate", usage = "/tpcreate", aliases = {}, enabled = true, label = "", permission = "")
 @Description(desc="creates a warp where two points are selected")
 public class Create extends CommandHandler implements Injectors {
-    PortServices portServices = injector.getInstance(PortServices.class);
+    private PortServices portServices = injector.getInstance(PortServices.class);
+    private final String permission = "thetaport.create";
 
-    private String permission = "thetaport.create";
+    private Option option = new Option("ar", "sets arrival message");
+
     private Options options = new Options()
             .addOption("os", "offset", true, "Sets the amount of time till next warp.")
-            .addOption("d", "disable", false, "Allows user to disable the function.");
-
+            .addOption("d", "disable", false, "Allows user to disable the function.")
+            .addOption("l", "linked", true, "Links a vendor to ")
+            .addOption(Option.builder().argName("ar").longOpt("arrival").valueSeparator(' ').hasArg(true).numberOfArgs(10).build());
 
     @Override
     public boolean execute(CommandSender sender, String commandLabel, String[] args) {
@@ -31,6 +38,7 @@ public class Create extends CommandHandler implements Injectors {
                     try {
                         cmdLine = parser.parse(options, args);
                     } catch (ParseException e) {
+                        e.printStackTrace();
                         player.sendMessage("§4An error exists in your arguments, please use -h or --help");
                         return true;
                     }
@@ -40,8 +48,14 @@ public class Create extends CommandHandler implements Injectors {
                         getHelp(options).forEach(sender::sendMessage);
                     }
 
-                    String unparsedOffset = (cmdLine.hasOption("os")) ? cmdLine.getOptionValue("os") : "";
-                    Response response = portServices.createWarp(player.getUniqueId(), args[0], unparsedOffset, cmdLine.hasOption("d"));
+                    System.out.println(cmdLine.hasOption("ar"));
+
+                    String offsetUnparsed = (cmdLine.hasOption("os")) ? cmdLine.getOptionValue("os") : "";
+                    String arrivalMessage = cmdLine.hasOption("ar") ? cmdLine.getOptionValues("ar").toString() : "";
+                    String departureMessage = cmdLine.hasOption("dm") ? cmdLine.getOptionValue("dm") : "";
+                    Response response = portServices.createPort(player.getUniqueId(), args[0], offsetUnparsed, cmdLine.hasOption("d"), arrivalMessage, departureMessage,
+                            Optional.ofNullable(cmdLine.getOptionValue("l")));
+
 
                     switch (response) {
                         case SUCCESS:
@@ -53,8 +67,10 @@ public class Create extends CommandHandler implements Injectors {
                         case REQUIRE_TWO_POINTS:
                             player.sendMessage("§4Two points are required to be selected, please use /point");
                             break;
+                        case INVALID_OFFSET:
+                            player.sendMessage("§4 Invalid offset, must be S, M, or H");
                         default:
-                            player.sendMessage("§4An error has occured");
+                            player.sendMessage("§4An error has occurred");
                     }
                 } else {
                     sender.sendMessage("§4The name you have submitted is invalid.");
