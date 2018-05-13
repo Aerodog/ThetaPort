@@ -8,17 +8,23 @@ import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.inject.Singleton;
 import com.thetablock.thetaport.entities.PortData;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.FilenameUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.util.FileUtil;
+import org.bukkit.util.io.BukkitObjectInputStream;
+import org.bukkit.util.io.BukkitObjectOutputStream;
+import org.yaml.snakeyaml.external.biz.base64Coder.Base64Coder;
 
 import java.io.*;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
@@ -35,30 +41,33 @@ public class PortDataRepositoryImpl implements PortDataRepository {
                 }
             });
 
-    Gson gson = new GsonBuilder()
-            .setPrettyPrinting()
-            .excludeFieldsWithoutExposeAnnotation()
-            .serializeNulls()
-            .disableHtmlEscaping()
-            .create();
-
     public PortDataRepositoryImpl() {
         File tempFile = new File(file + "/ports");
-
         if (null != tempFile.listFiles()) {
-            Arrays.stream(tempFile.listFiles()).forEach(f -> {
+            Arrays.stream(tempFile.listFiles())
+                    .filter(s->!s.getAbsolutePath().contains(".ser"))
+                    .filter(s-> !FilenameUtils.getExtension(tempFile + "").contains(".ser"))
+                    .forEach(f -> {
                 //   PortData portData = gson.fromJson(f, PortData.class);
-                ObjectMapper mapper = new ObjectMapper();
-                try {
+                        System.out.println(f.getAbsoluteFile());
+                    ObjectMapper mapper = new ObjectMapper();
+                        try {
                     PortData portData = mapper.readValue(f, PortData.class);
-                    this.warpDataMap.put(f.getName(), portData);
                     portData.setLastPortTime(LocalDateTime.now());
+                    Path path = Paths.get(file + "/ports/" + portData.getName() + ".ser");
+
+                    if (Files.exists(path)) {
+                       String content = new String(Files.readAllBytes(path));
+                       portData.setRequiredItem(itemFrom64(content));
+                    }
                     warpDataMap.put(portData.getName(), portData);
                 } catch (IOException ignored) {
                     ignored.printStackTrace();
                     System.out.println("An error has occurred while trying to load ports.");
                 }
             });
+            warpDataMap.asMap().forEach((k,v)->System.out.println("DERP " + k));
+            System.out.println("[INFO] ThetaPort has successfully loaded " + warpDataMap.size() + " ports.");
         }
     }
 
@@ -82,16 +91,47 @@ public class PortDataRepositoryImpl implements PortDataRepository {
     }
 
     private boolean saveData(PortData portData) {
-        String json = gson.toJson(portData);
-//        Files.write(json, file);
+        System.out.println("DATA " + portData.getRequiredItem().toString());
+
         ObjectMapper mapper = new ObjectMapper();
         try {
-            // gson.toJson(portData.getCeilPoint(), new FileWriter( file + "/warps/" + portData.getName() + ".json"));
             mapper.writeValue(new FileWriter(file + "/ports/" + portData.getName() + ".json"), portData);
+            if (portData.getRequiredItem() != null) {
+                Path path = Paths.get(file + "/ports/" + portData.getName() + ".ser");
+                String serialized = serializeItem(portData.getRequiredItem());
+                Files.write(path, Collections.singleton(serialized));
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
         return false;
+    }
+
+    private String serializeItem(ItemStack stack) {
+        try {
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            BukkitObjectOutputStream dataOutput = new BukkitObjectOutputStream(outputStream);
+            dataOutput.writeObject(stack);
+
+            // Serialize that array
+            dataOutput.close();
+            return Base64Coder.encodeLines(outputStream.toByteArray());
+        }
+        catch (Exception e) {
+            throw new IllegalStateException("Unable to save item stack.", e);
+        }
+    }
+
+    private static ItemStack itemFrom64(String data) throws IOException {
+        try {
+            ByteArrayInputStream inputStream = new ByteArrayInputStream(Base64Coder.decodeLines(data));
+            try (BukkitObjectInputStream dataInput = new BukkitObjectInputStream(inputStream)) {
+                return (ItemStack) dataInput.readObject();
+            }
+        }
+        catch (ClassNotFoundException e) {
+            throw new IOException("Unable to decode class type.", e);
+        }
     }
 
     @Override
@@ -103,6 +143,7 @@ public class PortDataRepositoryImpl implements PortDataRepository {
     @Override
     public boolean createNewWarp(PortData warp, boolean save) {
         warpDataMap.put(warp.getName(), warp);
+        System.out.println(warp);
         if (save) {
             saveData(warp);
         }
@@ -177,4 +218,5 @@ public class PortDataRepositoryImpl implements PortDataRepository {
     public int loadAll() {
         return 0;
     }
+
 }

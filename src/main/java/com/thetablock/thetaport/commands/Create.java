@@ -1,15 +1,20 @@
 package com.thetablock.thetaport.commands;
 
+import com.thetablock.thetaport.enums.ToolNames;
 import com.thetablock.thetaport.services.PortServices;
 import com.thetablock.thetaport.enums.Response;
 import com.thetablock.thetaport.utils.cmdManager.Cmd;
 import com.thetablock.thetaport.utils.cmdManager.Description;
+import net.minecraft.server.v1_12_R1.Item;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.bukkit.Material;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.Optional;
 
@@ -26,7 +31,11 @@ public class Create extends CommandHandler implements Injectors {
             .addOption("os", "offset", true, "Sets the amount of time till next warp.")
             .addOption("d", "disable", false, "Allows user to disable the function.")
             .addOption("l", "linked", true, "Links a vendor to ")
-            .addOption(Option.builder().argName("ar").longOpt("arrival").valueSeparator(' ').hasArg(true).numberOfArgs(10).build());
+            .addOption("t", "ticket", false, "Sets required item to teleport.")
+            .addOption("ar", "arrivaldeparture", false, "Sets the arrival message when a player is warped.")
+            .addOption("dr", "departureRedstone", false, "Sets the redstone executor")
+            .addOption("r", "reset", false, "Resets current in progress.")
+            .addOption("np", "nextport", false, "sets next port");
 
     @Override
     public boolean execute(CommandSender sender, String commandLabel, String[] args) {
@@ -47,19 +56,24 @@ public class Create extends CommandHandler implements Injectors {
                         sender.sendMessage("§7/tpcreate  §4<&port Name§4>");
                         getHelp(options).forEach(sender::sendMessage);
                     }
-
-                    System.out.println(cmdLine.hasOption("ar"));
-
                     String offsetUnparsed = (cmdLine.hasOption("os")) ? cmdLine.getOptionValue("os") : "";
-                    String arrivalMessage = cmdLine.hasOption("ar") ? cmdLine.getOptionValues("ar").toString() : "";
-                    String departureMessage = cmdLine.hasOption("dm") ? cmdLine.getOptionValue("dm") : "";
-                    Response response = portServices.createPort(player.getUniqueId(), args[0], offsetUnparsed, cmdLine.hasOption("d"), arrivalMessage, departureMessage,
-                            Optional.ofNullable(cmdLine.getOptionValue("l")));
 
+                    ItemStack item = null;
+
+                    Response response = portServices.createPort(
+                            player.getUniqueId(), args[0], false , cmdLine.hasOption("d"), cmdLine.hasOption("os"), cmdLine.hasOption("t"),
+                            cmdLine.hasOption("ar"), cmdLine.hasOption("np"),
+                            Optional.ofNullable(cmdLine.getOptionValue("t")), Optional.ofNullable(player.getInventory().getItemInMainHand()), cmdLine.hasOption("r"));
 
                     switch (response) {
                         case SUCCESS:
-                            player.sendMessage("§3the warp point has been created, to create an active link use /tplink");
+                            System.out.println("TOOL NAME " + ToolNames.CREATE_TOOL.getName());
+                            player.sendMessage("§3Select the first point.");
+                            ItemStack itemStack = new ItemStack(Material.BLAZE_ROD);
+                            ItemMeta  meta = itemStack.getItemMeta();
+                            meta.setDisplayName(ToolNames.CREATE_TOOL.getName());
+                            itemStack.setItemMeta(meta);
+                            player.getInventory().setItemInMainHand(itemStack);
                             break;
                         case WARP_EXISTS:
                             player.sendMessage("§4The warp name is already in use, please use another one.");
@@ -69,6 +83,13 @@ public class Create extends CommandHandler implements Injectors {
                             break;
                         case INVALID_OFFSET:
                             player.sendMessage("§4 Invalid offset, must be S, M, or H");
+                            break;
+                        case INVALID_REQUIRED_ITEM:
+                            player.sendMessage("§4 The item you have submitted is not valid.");
+                            break;
+                        case TEMP_PORT_EXISTS:
+                            player.sendMessage("§eYou already have a port in progress, if you wish to clear it use -r");
+                            break;
                         default:
                             player.sendMessage("§4An error has occurred");
                     }

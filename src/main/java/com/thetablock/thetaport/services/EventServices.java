@@ -1,16 +1,18 @@
 package com.thetablock.thetaport.services;
 
-import com.google.common.base.Joiner;
 import com.thetablock.thetaport.entities.PortData;
 import com.thetablock.thetaport.entities.PortLoc;
 import com.thetablock.thetaport.entities.PortState;
 import com.thetablock.thetaport.enums.EnumPortState;
 import com.thetablock.thetaport.repositories.PortDataRepository;
-import com.thetablock.thetaport.repositories.TimerRepository;
-import com.thetablock.thetaport.utils.cmdManager.Option;
+import com.thetablock.thetaport.repositories.TempRepository;
+import net.minecraft.server.v1_12_R1.LocaleLanguage;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.material.Lever;
 import org.bukkit.plugin.Plugin;
 
 import javax.inject.Inject;
@@ -27,71 +29,77 @@ import static java.time.temporal.ChronoUnit.SECONDS;
 
 public final class EventServices {
     private ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(12);
+    private ExecutorService executorService = Executors.newSingleThreadExecutor();
 
     static final ConcurrentHashMap<UUID, Location> ASYNC_PLAYER_LOCATIONS = new ConcurrentHashMap<>();
 
     private final PortDataRepository portDataRepository;
-    private final TimerRepository timerRepository;
+    private final TempRepository tempRepository;
 
     @Inject
-    public EventServices(PortDataRepository portDataRepository, TimerRepository timerRepository) {
+    public EventServices(PortDataRepository portDataRepository, TempRepository tempRepository) {
         this.portDataRepository = portDataRepository;
-        this.timerRepository = timerRepository;
+        this.tempRepository = tempRepository;
     }
 
     private void checkIfPlayerLeavesPortZone(Player player) {
         PortLoc portLoc = new PortLoc(player.getLocation());
-        for (PortState portState : timerRepository.tempWarpMaps().values()) {
+        for (PortState portState : tempRepository.tempWarpMaps().values()) {
             PortData portData = portDataRepository.getWarp(portState.getWarpName());
             portData.getFloorPoint().add(3, 3, 3);
             portData.getCeilPoint().add(3, 3, 3);
 
             if (!isWithinBounds(portData.getFloorPoint(), portData.getCeilPoint(), player.getLocation())) {
-                timerRepository.removePlayer(player.getUniqueId());
+                tempRepository.removePlayer(player.getUniqueId());
             }
         }
     }
 
-    private void checkIfPlayerEntersPortZone(Player player) {
-        final LocalDateTime currentTime = LocalDateTime.now();
-        Optional<PortData> portDataOption =
-                portDataRepository.getWarpData().values().stream()
-                        .filter(pt -> null != pt.getLinked() && !pt.getLinked().isEmpty())
-                        .filter(pt -> isWithinBounds(pt.getFloorPoint(), pt.getCeilPoint(), player.getLocation()))
-                        .filter(pt -> {
-                            if (ChronoUnit.SECONDS.between(LocalDateTime.now(), pt.getLastPortTime().plusSeconds(pt.getWarpOffset())) <= 2) {
-                                try {
-                                    Thread.sleep(2);
-                                } catch (InterruptedException e) {
-                                    e.printStackTrace();
-                                }
+    private void checkIfPlayerEntersPortZone(Player player) throws InterruptedException {
+        final PortLoc portLoc = new PortLoc(player.getLocation());
+        portDataRepository.getWarpData().values().stream()
+                .filter(pt->{
+                    boolean linked =  pt.getLinked() != null && !pt.getLinked().isEmpty();
+                    boolean isWithinBounds = isWithinBounds(pt.getFloorPoint(), pt.getCeilPoint(), player.getLocation());
+                    boolean hasEnteredZoneBefore;
+                    try {
+                        Thread.sleep(2);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    PortState portState = tempRepository.getPlayer(player.getUniqueId());
+                    if (null != portState && null != portState.getEnumPortState()) {
+                        hasEnteredZoneBefore = false;
+                    }
+                    hasEnteredZoneBefore = true;
+
+                    System.out.println("================");
+                    System.out.println("linked: " + linked + " isWithinBounds: " + isWithinBounds + " HasRequiredZone: " + hasEnteredZoneBefore);
+                    return linked && isWithinBounds && hasEnteredZoneBefore;
+                })
+//                .filter(pt -> pt.getLinked() != null && !pt.getLinked().isEmpty())
+//                .filter(pt -> isWithinBounds(pt.getFloorPoint(), pt.getCeilPoint(), player.getLocation()))
+//                .filter(pt -> {
+//                    PortState portState = tempRepository.getPlayer(player.getUniqueId());
+//                    if (null != portState) {
+//                        return false;
+//                    }
+//                    return true;
+//                })
+                    .forEach(pt->{
+                        if (pt.getOffset() > 0) {
+                            if (ChronoUnit.SECONDS.between(pt.getLastPortTime(), LocalTime.now()) > 1) {
+                                LocalDateTime nextToWarp = pt.getLastPortTime().plusSeconds(pt.getOffset());
+                                String departureMessage = pt.getDepartureMessage().replace("&t", getTimeRemaining(LocalDateTime.now(), nextToWarp));
+                                departureMessage = departureMessage.replace("&", "§");
+                                player.sendMessage(departureMessage);
                             }
-                            PortState portState = timerRepository.getPlayer(player.getUniqueId());
-
-                            if (null != portState) {
-                                if (portState.getEnumPortState().equals(JUST_WARPED) || portState.getEnumPortState().equals(WAITING_WARP)) {
-                                    return false;
-                                }
-                            }
-                            return true;
-                        }).findFirst();
-
-        portDataOption.ifPresent(pt -> {
-            timerRepository.addActivePlayer(pt.getName(), player, EnumPortState.JUST_WARPED);
-            System.out.println(timerRepository.toString());
-            if (pt.getWarpOffset() > 0) {
-                String timeLeft = getTimeRemaining(LocalDateTime.now(), pt.getLastPortTime().plusSeconds(pt.getWarpOffset()));
-                System.out.println(timeLeft);
-                String temp = pt.getDepartureMessage();
-                temp = temp.replace("&t", timeLeft + " ");
-                temp = temp.replace("&", "§");
-
-                player.sendMessage(temp);
-            }
-        });
+                        }
+                        tempRepository.addActivePlayer(pt.getLinked(), player, EnumPortState.WAITING_WARP);
+                });
     }
 
-    public synchronized String getTimeRemaining(LocalDateTime start, LocalDateTime end) {
+    private synchronized String getTimeRemaining(LocalDateTime start, LocalDateTime end) {
         String output = "";
         //LocalTime startPoint = start.toLocalTime();
         //LocalTime endPoint = end.toLocalTime();
@@ -135,10 +143,8 @@ public final class EventServices {
         if (seconds > 0) {
             output += seconds + " seconds ";
         }
-
         return output;
     }
-
 
     public void startListenerEvents(Plugin plugin) {
         portDataRepository.loadAll();
@@ -154,8 +160,11 @@ public final class EventServices {
             ASYNC_PLAYER_LOCATIONS.forEach((k, v) -> {
                 Player player = Bukkit.getPlayer(k);
 
-
-                checkIfPlayerEntersPortZone(player);
+                try {
+                    checkIfPlayerEntersPortZone(player);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
 
             });
         }, 1000L, 1000L, TimeUnit.MILLISECONDS);
@@ -182,51 +191,45 @@ public final class EventServices {
         }, 200L, 200L, TimeUnit.MILLISECONDS);
     }
 
-    private void loopRunnableState(PortData portData) {
-        for (PortState portState : timerRepository.tempWarpMaps().values()) {
-            if (portState.getWarpName().equals(portData.getName())) {
-                if (portState.getEnumPortState().equals(WAITING_WARP)) {
-                    System.out.println(timerRepository.toString());
-                    timerRepository.addActivePlayer(portData.getLinked(), portState.getPlayer(), JUST_WARPED);
-                    //Test
-                    portState = timerRepository.getPlayer(portState.getPlayer().getUniqueId());
-                    portState.getPlayer().teleport(portData.getWarpToPoint().getLocation());
-
-                    //sets the current state forward
-
-                    portData.setLastPortTime(LocalDateTime.now());
-                    portDataRepository.softUpdate(portData);
-                    System.out.println("Last port time: " + portData.toString());
-
-                    if (null != portData.getArrivalMessage() && !portData.getArrivalMessage().isEmpty()) {
-                        String message = portData.getArrivalMessage();
-                        message = message.replace("&", "§");
-                        portState.getPlayer().sendMessage(message);
-                    }
-
-                }
-            }
-        }
-    }
-
+    /**
+     * This System will only  execute if the offset > 0;
+     */
     private void buildRunnable() {
         scheduledExecutorService.scheduleAtFixedRate(() -> {
             try {
                 portDataRepository.getWarpData().values().stream()
-                        .filter(pt -> pt.getLinked() != null && !pt.getLinked().isEmpty())
-                        .forEach(pt -> {
-                            if (pt.getWarpOffset() > 0) {
-                                final long timeRemaining = SECONDS.between(LocalDateTime.now(), pt.getLastPortTime().plusSeconds(pt.getWarpOffset()));
-                                if (timeRemaining <= 0) {
-                                    pt.setLastPortTime(LocalDateTime.now());
-                                    portDataRepository.softUpdate(pt);
-                                    if (timerRepository.getActivePlayers(pt.getName()).size() > 0) {
-                                        port(pt.getName(), pt.getLinked(), pt.getWarpToPoint(), pt.getArrivalMessage());
-                                    }
-                                }
+                        .filter(pt->{
+                            boolean isLinked = pt.getLinked() != null && !pt.getLinked().isEmpty();
+                            boolean hasOffsetAndPort;
+                            if (pt.getOffset() > 0) {
+                                hasOffsetAndPort =  SECONDS.between(LocalDateTime.now(), pt.getLastPortTime().plusSeconds(pt.getOffset())) < 0;
+                            } else {
+                                hasOffsetAndPort = true;
+
                             }
+                            System.out.println("isLinked " + isLinked + " hasOffset" + hasOffsetAndPort);
+                            return  isLinked && hasOffsetAndPort;
+                        })
+//                        .filter(pt -> pt.getLinked() != null && !pt.getLinked().isEmpty())
+//                        .filter(pt -> {
+//                            if (pt.getOffset() > 0) {
+//                                return SECONDS.between(LocalDateTime.now(), pt.getLastPortTime().plusSeconds(pt.getOffset())) < 0;
+//                            }
+//                            return true;
+//                        })
+                        .forEach(pt -> {
+                            //If the port
+                            if (pt.getOffset() > 0) {
+                                pt.setLastPortTime(LocalDateTime.now());
+                                portDataRepository.update(pt);
+                            }
+                            port(pt.getName(), pt.getLinked(), pt.getArrivalMessage());
 
-
+                            //executes redstone on warp
+                            if (null != pt.getArrivalRedstone()) {
+                                Lever lever = (Lever) pt.getArrivalRedstone().getLocation().getBlock();
+                                executeRedstone(lever);
+                            }
                         });
             } catch (Exception e) {
                 e.printStackTrace();
@@ -234,18 +237,45 @@ public final class EventServices {
         }, 1000L, 1000L, TimeUnit.MILLISECONDS);
     }
 
-    private void port(String portName, String linked, PortLoc portLoc, String message) {
-        timerRepository.tempWarpMaps().values().forEach(portState -> {
-            if (portState.getWarpName().equalsIgnoreCase(portName)) {
+    private void executeRedstone(Lever lever) {
+        executorService.execute(() -> {
+            lever.setPowered(true);
+            try {
+                Thread.sleep(3L);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            lever.setPowered(false);
+        });
+        lever.setPowered(true);
+    }
 
-                if (null != portState.getEnumPortState()) {
-                    System.out.println("port state " + portState.getEnumPortState());
-                    if (portState.getEnumPortState().equals(WAITING_WARP)) {
-                        return;
-                    }
+    private boolean checkIfUserHasItem(ItemStack itemStack, Player player) {
+        for (ItemStack invItem : player.getInventory().getContents()) {
+            if (itemStack.getType().equals(invItem.getType())) {
+                ItemMeta itemMeta = itemStack.getItemMeta();
+                if (itemMeta.getDisplayName().equalsIgnoreCase(invItem.getItemMeta().getDisplayName())) {
+                    player.getInventory().remove(itemStack);
+                    return true;
                 }
-                timerRepository.addActivePlayer(linked, portState.getPlayer(), JUST_WARPED);
-                portState.getPlayer().teleport(portLoc.getLocation());
+            }
+        }
+        return false;
+    }
+
+    private void port(String portName, String linked, String message) {
+        tempRepository.tempWarpMaps().values().forEach(portState -> {
+            System.out.println("portState " + portState.getEnumPortState());
+            if (null != portState.getEnumPortState()) {
+                System.out.println("port state " + portState.getEnumPortState());
+                if (portState.getEnumPortState().equals(JUST_WARPED)) {
+                    return;
+                }
+            }
+            tempRepository.addActivePlayer(linked, portState.getPlayer(), JUST_WARPED);
+            PortData portToPoint = portDataRepository.getWarp(linked);
+            portState.getPlayer().teleport(portToPoint.getArrivalPoint().getLocation());
+            if (!portToPoint.getArrivalMessage().isEmpty()) {
                 portState.getPlayer().sendMessage(message.replace("&", "§"));
             }
         });

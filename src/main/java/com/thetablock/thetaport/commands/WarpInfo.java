@@ -28,12 +28,12 @@ public class WarpInfo extends CommandHandler implements Injectors {
                     case SUCCESS: {
                         PortData wd = warpData.getValue();
                         sender.sendMessage("Warp Name: " + wd.getName());
-                        sender.sendMessage("Warp To Point:" + wd.getWarpToPoint());
+                        sender.sendMessage("Warp To Point:" + wd.getArrivalPoint());
                         sender.sendMessage("Corner: " + wd.getFloorPoint());
                         sender.sendMessage("Corner: " + wd.getCeilPoint());
                         sender.sendMessage("Enabled: true");
                         sender.sendMessage("Linked Point: " + wd.getLinked());
-                        sender.sendMessage("Offset: " + wd.getWarpOffset());
+                        sender.sendMessage("Offset: " + wd.getOffset());
                         sender.sendMessage("Arrival Message: " + wd.getArrivalMessage());
                         sender.sendMessage("Departure Message: " + wd.getDepartureMessage());
                     }

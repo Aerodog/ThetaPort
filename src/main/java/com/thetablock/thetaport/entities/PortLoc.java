@@ -7,10 +7,21 @@ import org.bukkit.Location;
 
 public class PortLoc extends Point3D {
     private String world;
+    private double yaw;
+    private double pitch;
 
     public PortLoc(String world, Double x, Double y, Double z) {
         super(x,y,z);
         this.world = world;
+        this.yaw = 0;
+        this.pitch = 0;
+    }
+
+    public PortLoc(String world, Double x, Double y, Double z, double yaw, double pitch) {
+        super(x,y,z);
+        this.world = world;
+        this.yaw = yaw;
+        this.pitch = pitch;
     }
 
     public PortLoc() {
@@ -24,7 +35,7 @@ public class PortLoc extends Point3D {
     }
 
     @JsonIgnore
-    public PortLoc compareWarpLoc(PortLoc loc) {
+    public boolean compareWarpLoc(PortLoc loc) {
         double x1 = Math.min(this.getX(), loc.getX());
         double y1 = Math.min(this.getY(), loc.getY());
         double z1 = Math.min(this.getZ(), loc.getZ());
@@ -42,7 +53,7 @@ public class PortLoc extends Point3D {
 
         return loc.getX() >= minX && loc.getX() <= maxX
                 && loc.getY() >= minY && loc.getY() <= maxY
-                && loc.getZ() >= minZ && loc.getZ() <= maxZ ? loc : this;
+                && loc.getZ() >= minZ && loc.getZ() <= maxZ;
     }
 
     @JsonIgnore

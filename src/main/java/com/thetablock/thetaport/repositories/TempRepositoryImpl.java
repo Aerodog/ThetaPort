@@ -2,23 +2,24 @@ package com.thetablock.thetaport.repositories;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import com.google.common.collect.Multimap;
-
 import com.google.inject.Singleton;
 import com.thetablock.thetaport.entities.PortState;
+import com.thetablock.thetaport.entities.Core;
 import com.thetablock.thetaport.enums.EnumPortState;
+import org.apache.commons.cli.CommandLine;
 import org.bukkit.entity.Player;
 
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Singleton
-public class TimerRepositoryImpl implements TimerRepository {
+public class TempRepositoryImpl implements TempRepository {
     private Map<UUID, PortState> playerPortState = new HashMap<>();
-    private Map<String, ScheduledFuture> registeredTasks = new HashMap<>();
-    private Cache<UUID, String> tempDisableWarp = CacheBuilder.newBuilder()
-            .expireAfterWrite(10, TimeUnit.MILLISECONDS)
+    private Map<UUID, Core> tempPorts = new HashMap<>();
+    private Cache<UUID, CommandLine> tempArgs = CacheBuilder.newBuilder()
+            .concurrencyLevel(4)
+            .expireAfterWrite(5, TimeUnit.MINUTES)
             .build();
 
     @Override
@@ -51,27 +52,6 @@ public class TimerRepositoryImpl implements TimerRepository {
 
 
     @Override
-    public boolean stopTask(String taskName) {
-        return registeredTasks.get(taskName).cancel(true);
-    }
-
-    @Override
-    public void addTempDisabled(UUID uuid, String warpName) {
-        tempDisableWarp.put(uuid, warpName);
-    }
-
-    @Override
-    public boolean invalidate(UUID uuid) {
-        tempDisableWarp.invalidate(uuid);
-        return false;
-    }
-
-    @Override
-    public boolean isDisabled(UUID uuid) {
-        return tempDisableWarp.asMap().containsKey(uuid);
-    }
-
-    @Override
     public boolean hasPlayer(UUID uuid) {
         return playerPortState.containsKey(uuid);
     }
@@ -79,6 +59,36 @@ public class TimerRepositoryImpl implements TimerRepository {
     @Override
     public PortState getPlayer(UUID uuid) {
         return playerPortState.get(uuid);
+    }
+
+    @Override
+    public Core getTempPort(UUID uuid) {
+        return tempPorts.get(uuid);
+    }
+
+    @Override
+    public void addTempPort(UUID uuid, Core core) {
+        tempPorts.put(uuid, core);
+    }
+
+    @Override
+    public void invalidateTempPort(UUID uuid) {
+        tempPorts.remove(uuid);
+    }
+
+    @Override
+    public boolean hasTempPlayer(UUID uniqueId) {
+        return tempPorts.containsKey(uniqueId);
+    }
+
+    @Override
+    public CommandLine getUserArgs(UUID uniqueId) {
+        return tempArgs.getIfPresent(uniqueId);
+    }
+
+    @Override
+    public void addCommandArgs(UUID uuid, CommandLine cmdLine) {
+        tempArgs.put(uuid, cmdLine);
     }
 
 
