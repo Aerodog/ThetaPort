@@ -10,6 +10,7 @@ public class PortLoc extends Point3D {
     private double yaw;
     private double pitch;
 
+    @JsonIgnore
     public PortLoc(String world, Double x, Double y, Double z) {
         super(x,y,z);
         this.world = world;
@@ -31,6 +32,8 @@ public class PortLoc extends Point3D {
     @JsonIgnore
     public PortLoc(Location location) {
         super(location.getX(), location.getY(), location.getZ());
+        this.yaw = location.getYaw();
+        this.pitch = location.getPitch();
         world = location.getWorld().getName();
     }
 
@@ -84,5 +87,28 @@ public class PortLoc extends Point3D {
         return this.getX() >= x1 && this.getX() <= x2
                 && getY() >= y1 && getY() <= y2
                 && getZ() >= z1 && getZ() <= z2;
+    }
+
+    public PortLoc setWorld(String world) {
+        this.world = world;
+        return this;
+    }
+
+    public double getYaw() {
+        return yaw;
+    }
+
+    public PortLoc setYaw(double yaw) {
+        this.yaw = yaw;
+        return this;
+    }
+
+    public double getPitch() {
+        return pitch;
+    }
+
+    public PortLoc setPitch(double pitch) {
+        this.pitch = pitch;
+        return this;
     }
 }

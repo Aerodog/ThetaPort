@@ -40,16 +40,6 @@ public class PortData extends Core {
         return this;
     }
 
-    @Override
-    public String getLinked() {
-        return linked;
-    }
-
-    public PortData setLinked(String linked) {
-        this.linked = linked;
-        return this;
-    }
-
     public String getArrivalMessage() {
         return arrivalMessage;
     }

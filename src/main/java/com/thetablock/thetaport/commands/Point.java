@@ -9,6 +9,7 @@ import org.bukkit.entity.Player;
 
 import java.text.DecimalFormat;
 
+@Deprecated
 @Cmd(name = "tppoint", label = "", usage = "", aliases = {}, enabled = true, permission = "")
 public class Point extends CommandHandler implements Injectors {
     private final String permisison = "thetaport.point";

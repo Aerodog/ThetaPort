@@ -19,6 +19,7 @@ public class ThetaPort  extends JavaPlugin implements Injectors {
         RegisteredCommands registeredCommands = injector.getInstance(RegisteredCommands.class);
         EventServices eventServices = injector.getInstance(EventServices.class);
 
+
         eventServices.startListenerEvents(this);
         Bukkit.getPluginManager().registerEvents(new ToolItemClickEvent(), this);
 

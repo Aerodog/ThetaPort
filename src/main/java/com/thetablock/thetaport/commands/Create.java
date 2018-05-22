@@ -5,7 +5,6 @@ import com.thetablock.thetaport.services.PortServices;
 import com.thetablock.thetaport.enums.Response;
 import com.thetablock.thetaport.utils.cmdManager.Cmd;
 import com.thetablock.thetaport.utils.cmdManager.Description;
-import net.minecraft.server.v1_12_R1.Item;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
@@ -32,8 +31,7 @@ public class Create extends CommandHandler implements Injectors {
             .addOption("d", "disable", false, "Allows user to disable the function.")
             .addOption("l", "linked", true, "Links a vendor to ")
             .addOption("t", "ticket", false, "Sets required item to teleport.")
-            .addOption("ar", "arrivaldeparture", false, "Sets the arrival message when a player is warped.")
-            .addOption("dr", "departureRedstone", false, "Sets the redstone executor")
+            .addOption("rw", "railway", false, "Sets rail departure.")
             .addOption("r", "reset", false, "Resets current in progress.")
             .addOption("np", "nextport", false, "sets next port");
 
@@ -60,10 +58,19 @@ public class Create extends CommandHandler implements Injectors {
 
                     ItemStack item = null;
 
-                    Response response = portServices.createPort(
-                            player.getUniqueId(), args[0], false , cmdLine.hasOption("d"), cmdLine.hasOption("os"), cmdLine.hasOption("t"),
-                            cmdLine.hasOption("ar"), cmdLine.hasOption("np"),
-                            Optional.ofNullable(cmdLine.getOptionValue("t")), Optional.ofNullable(player.getInventory().getItemInMainHand()), cmdLine.hasOption("r"));
+                    Response response = portServices.createRailPort(args[0], cmdLine.hasOption("d"));
+
+                    if (cmdLine.hasOption("r")) {
+                        if (cmdLine.hasOption("os")) {
+                            sender.sendMessage("Offset cannot be set for rail teleportation.");
+                        }
+                    } else {
+                        response = portServices.createPort(
+                                player.getUniqueId(), args[0], false, cmdLine.hasOption("d"), cmdLine.hasOption("os"), cmdLine.hasOption("t"),
+                                cmdLine.hasOption("ar"), cmdLine.hasOption("np"),
+                                Optional.ofNullable(cmdLine.getOptionValue("t")), Optional.ofNullable(player.getInventory().getItemInMainHand()), cmdLine.hasOption("r"),
+                                cmdLine.hasOption("rw"));
+                    }
 
                     switch (response) {
                         case SUCCESS:

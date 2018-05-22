@@ -9,18 +9,21 @@ import com.thetablock.thetaport.repositories.TempRepository;
 import com.thetablock.thetaport.enums.Response;
 import com.thetablock.thetaport.repositories.PortDataRepository;
 import com.thetablock.thetaport.utils.Tuple2;
-import javafx.geometry.Point3D;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.lang.StringUtils;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.material.Rails;
 
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public final class PortServices {
     @Inject
@@ -35,18 +38,20 @@ public final class PortServices {
         return Response.DISABLED;
     }
 
-    public Response createPort(UUID uuid, String name, boolean override, boolean isDisabled, boolean hasOffset, boolean hasRequiredItem, boolean hasArrivalMessage, boolean hasDepartureMessage,  Optional<String> unparsedOffset, Optional<ItemStack> requiredItemOptional, boolean reset) {
+    public Response createPort(UUID uuid, String name, boolean override, boolean isDisabled, boolean hasOffset, CommandLine cmdLine, Optional<String> unparsedOffset,
+               Optional<ItemStack> requiredItemOptional) {
+//                               boolean hasRequiredItem, boolean hasArrivalMessage, boolean hasDepartureMessage, Optional<String> unparsedOffset, Optional<ItemStack> requiredItemOptional, boolean r, boolean reset) {
         Core core = tempRepository.getTempPort(uuid);
         int offset = 0;
 
-        if (core != null && reset) {
+        if (core != null && cmdLine.hasOption("r")) {
             core = null;
         }
 
         if (null == core || override) {
             //checks to see if the warp already exists.
             if (!portDataRepository.getWarpData().containsKey(name)) {
-                if (hasOffset) {
+                if (cmdLine.hasOption("os")) {
                     if (unparsedOffset.isPresent()) {
                         offset = parseOffset(unparsedOffset.get());
                     } else {
@@ -54,7 +59,7 @@ public final class PortServices {
                     }
                 }
                 ItemStack item = null;
-                if (hasRequiredItem) {
+                if (cmdLine.hasOption("t")) {
                     if (requiredItemOptional
                             .filter(v -> !v.getType().equals(Material.AIR))
                             .isPresent()) {
@@ -97,10 +102,18 @@ public final class PortServices {
                 } else {
                     core.setCeilPoint(portLoc);
                 }
+
+                if (tempRepository.getUserArgs(uniqueId).hasOption("rr")) {
+
+                }
+
                 response = Response.SECOND_POINT_SET;
                 break;
             case 2:
-                portLoc.add(0,1,0); //moves the block up one from where it was clicked.
+                System.out.println("Before " + portLoc.toString());
+                portLoc.add(0,2,0); //moves the block up one from where it was clicked.
+                System.out.println("After " + portLoc.toString());
+
                 core.setArrivalPoint(portLoc);
                 portDataRepository.createNewWarp(new PortData(core), true);
                 tempRepository.invalidateTempPort(uniqueId);
@@ -108,6 +121,67 @@ public final class PortServices {
                 break;
         }
         return response;
+    }
+
+    private boolean isWithinBounds(PortLoc lower, PortLoc upper, Location loc) {
+        double x1 = Math.min(lower.getX(), upper.getX());
+        double y1 = Math.min(lower.getY(), upper.getY());
+        double z1 = Math.min(lower.getZ(), upper.getZ());
+        double x2 = Math.max(lower.getX(), upper.getX());
+        double y2 = Math.max(lower.getY(), upper.getY());
+        double z2 = Math.max(lower.getZ(), upper.getZ());
+
+        return loc.getBlockX() >= x1 && loc.getBlockX() <= x2
+                && loc.getBlockY() >= y1 && loc.getBlockY() <= y2
+                && loc.getBlockZ() >= z1 && loc.getBlockZ() <= z2;
+    }
+
+    private Optional<Block> findExternalFacingRail(final BlockFace blockFace, PortLoc first, PortLoc second) {
+        return IntStream.range((int) first.getX(), 1000)
+               .mapToObj(i->{
+                   switch (blockFace) {
+                       case NORTH:
+                           first.add(i, 0, 0);    break;
+                       case EAST:
+                           first.add(0, 0, 1); break;
+                       case SOUTH:
+                           first.add(i * -1, 0, 0);  break;
+                       case WEST:
+                           first.add(0, 0, i * -1);  break;
+                   }
+                   return first.getLocation().getBlock();
+               })
+               .filter(l->l.getType().equals(Material.RAILS))
+               .findFirst();
+    }
+
+    public static List<Block> blocksFromTwoPoints(Location loc1, Location loc2)
+    {
+        List<Block> blocks = new ArrayList<Block>();
+
+        int topBlockX = (loc1.getBlockX() < loc2.getBlockX() ? loc2.getBlockX() : loc1.getBlockX());
+        int bottomBlockX = (loc1.getBlockX() > loc2.getBlockX() ? loc2.getBlockX() : loc1.getBlockX());
+
+        int topBlockY = (loc1.getBlockY() < loc2.getBlockY() ? loc2.getBlockY() : loc1.getBlockY());
+        int bottomBlockY = (loc1.getBlockY() > loc2.getBlockY() ? loc2.getBlockY() : loc1.getBlockY());
+
+        int topBlockZ = (loc1.getBlockZ() < loc2.getBlockZ() ? loc2.getBlockZ() : loc1.getBlockZ());
+        int bottomBlockZ = (loc1.getBlockZ() > loc2.getBlockZ() ? loc2.getBlockZ() : loc1.getBlockZ());
+
+        for(int x = bottomBlockX; x <= topBlockX; x++)
+        {
+            for(int z = bottomBlockZ; z <= topBlockZ; z++)
+            {
+                for(int y = bottomBlockY; y <= topBlockY; y++)
+                {
+                    Block block = loc1.getWorld().getBlockAt(x, y, z);
+
+                    blocks.add(block);
+                }
+            }
+        }
+
+        return blocks;
     }
 
 //    /**
@@ -402,6 +476,4 @@ public final class PortServices {
 
         }
     }
-
-
 }
