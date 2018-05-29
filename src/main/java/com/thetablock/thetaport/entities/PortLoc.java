@@ -7,9 +7,10 @@ import org.bukkit.Location;
 
 public class PortLoc extends Point3D {
     private String world;
-    private double yaw;
-    private double pitch;
+    private float yaw;
+    private float pitch;
 
+    @JsonIgnore
     public PortLoc(String world, Double x, Double y, Double z) {
         super(x,y,z);
         this.world = world;
@@ -17,7 +18,7 @@ public class PortLoc extends Point3D {
         this.pitch = 0;
     }
 
-    public PortLoc(String world, Double x, Double y, Double z, double yaw, double pitch) {
+    public PortLoc(String world, Double x, Double y, Double z, float yaw, float pitch) {
         super(x,y,z);
         this.world = world;
         this.yaw = yaw;
@@ -31,7 +32,14 @@ public class PortLoc extends Point3D {
     @JsonIgnore
     public PortLoc(Location location) {
         super(location.getX(), location.getY(), location.getZ());
+        this.yaw = location.getYaw();
+        this.pitch = location.getPitch();
         world = location.getWorld().getName();
+    }
+
+    @JsonIgnore
+    public PortLoc(Point3D point3D) {
+        super(point3D.getX(), point3D.getY(), point3D.getZ());
     }
 
     @JsonIgnore
@@ -66,7 +74,7 @@ public class PortLoc extends Point3D {
 
     @JsonIgnore
     public Location getLocation() {
-        return new Location(Bukkit.getWorld(world), getX(), getY(), getZ());
+        return new Location(Bukkit.getWorld(world), getX(), getY(), getZ(), yaw, pitch);
     }
 
     public String getWorld() {
@@ -85,4 +93,34 @@ public class PortLoc extends Point3D {
                 && getY() >= y1 && getY() <= y2
                 && getZ() >= z1 && getZ() <= z2;
     }
+
+    public PortLoc setWorld(String world) {
+        this.world = world;
+        return this;
+    }
+
+    public double getYaw() {
+        return yaw;
+    }
+
+    public PortLoc setYaw(float yaw) {
+        this.yaw = yaw;
+        return this;
+    }
+
+    public double getPitch() {
+        return pitch;
+    }
+
+    public PortLoc setPitch(float pitch) {
+        this.pitch = pitch;
+        return this;
+    }
+
+    @Override
+    public PortLoc subtract(double x, double y, double z) {
+        return new PortLoc(super.subtract(x,y,z));
+    }
+
+
 }

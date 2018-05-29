@@ -19,7 +19,7 @@ public class RegisteredCommands {
     protected CommandMap cmap = null;
     private List<RegisteredCommand> registeredCommands = new ArrayList<>();
 
-    public <T extends CommandHandler>RegisteredCommands registerCommand(Supplier<T> regCmd, Plugin plugin) {
+    public <T extends CommandHandler> RegisteredCommands registerCommand(Supplier<T> regCmd, Plugin plugin) {
         if (regCmd.get().getClass().isAnnotationPresent(Cmd.class)) {
             Cmd reg = regCmd.get().getClass().getAnnotation(Cmd.class);
             List<Option> optionsList = new ArrayList<>();
@@ -42,21 +42,19 @@ public class RegisteredCommands {
 
                 bukkitCommandMap.setAccessible(true);
                 CommandMap commandMap = (CommandMap) bukkitCommandMap.get(Bukkit.getServer());
-                plugin.getLogger().log(Level.INFO, "Successfully registered command: " + reg.name());
+                plugin.getLogger().log(Level.INFO, "Succewssfully registered command: " + reg.name());
 
                 if (reg.enabled()) {
                     commandMap.register(reg.name(), t);
                 } else {
                     commandMap.register(reg.name(), new DisabledCommand(reg.name()));
                 }
-            } catch(Exception e) {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         } else {
             plugin.getLogger().log(Level.WARNING, "Unable to register " + regCmd.get().getClass().getName() + " due to missing registration.");
         }
-
-
         return this;
     }
 }

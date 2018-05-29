@@ -1,5 +1,6 @@
 package com.thetablock.thetaport.repositories;
 
+import com.google.common.collect.ImmutableMap;
 import com.thetablock.thetaport.entities.PortState;
 import com.thetablock.thetaport.entities.Core;
 import com.thetablock.thetaport.enums.EnumPortState;
@@ -37,4 +38,8 @@ public interface TempRepository {
     org.apache.commons.cli.CommandLine getUserArgs(UUID uniqueId);
 
     void addCommandArgs(UUID uuid, CommandLine cmdLine);
+
+    void addSelected(UUID uuid, String selected);
+
+    ImmutableMap<UUID, String> getSelectedMap();
 }

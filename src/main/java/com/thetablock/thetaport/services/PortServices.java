@@ -4,23 +4,35 @@ import com.google.common.base.Splitter;
 import com.thetablock.thetaport.entities.PortData;
 import com.thetablock.thetaport.entities.PortLoc;
 import com.thetablock.thetaport.entities.Core;
+import com.thetablock.thetaport.enums.Direction;
 import com.thetablock.thetaport.enums.EnumSetTypes;
 import com.thetablock.thetaport.repositories.TempRepository;
 import com.thetablock.thetaport.enums.Response;
 import com.thetablock.thetaport.repositories.PortDataRepository;
 import com.thetablock.thetaport.utils.Tuple2;
 import javafx.geometry.Point3D;
+import net.minecraft.server.v1_12_R1.EnumDirection;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.lang.StringUtils;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.World;
+import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
+import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.material.Rails;
 
 import javax.inject.Inject;
+import java.awt.*;
 import java.util.*;
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
+import static java.awt.GridBagConstraints.SOUTHWEST;
 
 public final class PortServices {
     @Inject
@@ -35,35 +47,31 @@ public final class PortServices {
         return Response.DISABLED;
     }
 
-    public Response createPort(UUID uuid, String name, boolean override, boolean isDisabled, boolean hasOffset, boolean hasRequiredItem, boolean hasArrivalMessage, boolean hasDepartureMessage,  Optional<String> unparsedOffset, Optional<ItemStack> requiredItemOptional, boolean reset) {
+    public Response createPort(UUID uuid, String name, boolean override, boolean isDisabled, boolean hasOffset, CommandLine cmdLine, ItemStack requiredItem) {
+//                               boolean hasRequiredItem, boolean hasArrivalMessage, boolean hasDepartureMessage, Optional<String> unparsedOffset, Optional<ItemStack> requiredItemOptional, boolean r, boolean reset) {
         Core core = tempRepository.getTempPort(uuid);
         int offset = 0;
 
-        if (core != null && reset) {
+        if (core != null && cmdLine.hasOption("r")) {
             core = null;
         }
 
         if (null == core || override) {
             //checks to see if the warp already exists.
             if (!portDataRepository.getWarpData().containsKey(name)) {
-                if (hasOffset) {
-                    if (unparsedOffset.isPresent()) {
-                        offset = parseOffset(unparsedOffset.get());
+                if (cmdLine.hasOption("os")) {
+                    if (null != cmdLine.getOptionValue("os")) {
+                        offset = parseOffset(cmdLine.getOptionValue("os"));
                     } else {
                         return Response.INVALID_OFFSET;
                     }
                 }
-                ItemStack item = null;
-                if (hasRequiredItem) {
-                    if (requiredItemOptional
-                            .filter(v -> !v.getType().equals(Material.AIR))
-                            .isPresent()) {
-                        item = requiredItemOptional.get();
-                    } else {
+                if (cmdLine.hasOption("t")) {
+                    if (null == requiredItem || requiredItem.getType().equals(Material.AIR)) {
                         return Response.INVALID_REQUIRED_ITEM;
                     }
                 }
-                core = new Core(name, offset, null, item, null, null, null, null, null);
+                core = new Core(name, offset, null, requiredItem, null, null, null, null, null);
 
                 tempRepository.addTempPort(uuid, core);
                 return Response.SUCCESS;
@@ -97,10 +105,14 @@ public final class PortServices {
                 } else {
                     core.setCeilPoint(portLoc);
                 }
+
                 response = Response.SECOND_POINT_SET;
                 break;
             case 2:
-                portLoc.add(0,1,0); //moves the block up one from where it was clicked.
+                System.out.println("Before " + portLoc.toString());
+                portLoc.add(0,2,0); //moves the block up one from where it was clicked.
+                System.out.println("After " + portLoc.toString());
+
                 core.setArrivalPoint(portLoc);
                 portDataRepository.createNewWarp(new PortData(core), true);
                 tempRepository.invalidateTempPort(uniqueId);
@@ -108,6 +120,67 @@ public final class PortServices {
                 break;
         }
         return response;
+    }
+
+    private boolean isWithinBounds(PortLoc lower, PortLoc upper, Location loc) {
+        double x1 = Math.min(lower.getX(), upper.getX());
+        double y1 = Math.min(lower.getY(), upper.getY());
+        double z1 = Math.min(lower.getZ(), upper.getZ());
+        double x2 = Math.max(lower.getX(), upper.getX());
+        double y2 = Math.max(lower.getY(), upper.getY());
+        double z2 = Math.max(lower.getZ(), upper.getZ());
+
+        return loc.getBlockX() >= x1 && loc.getBlockX() <= x2
+                && loc.getBlockY() >= y1 && loc.getBlockY() <= y2
+                && loc.getBlockZ() >= z1 && loc.getBlockZ() <= z2;
+    }
+
+    private Optional<Block> findExternalFacingRail(final BlockFace blockFace, PortLoc first, PortLoc second) {
+        return IntStream.range((int) first.getX(), 1000)
+               .mapToObj(i->{
+                   switch (blockFace) {
+                       case NORTH:
+                           first.add(i, 0, 0);    break;
+                       case EAST:
+                           first.add(0, 0, 1); break;
+                       case SOUTH:
+                           first.add(i * -1, 0, 0);  break;
+                       case WEST:
+                           first.add(0, 0, i * -1);  break;
+                   }
+                   return first.getLocation().getBlock();
+               })
+               .filter(l->l.getType().equals(Material.RAILS))
+               .findFirst();
+    }
+
+    public static List<Block> blocksFromTwoPoints(Location loc1, Location loc2)
+    {
+        List<Block> blocks = new ArrayList<Block>();
+
+        int topBlockX = (loc1.getBlockX() < loc2.getBlockX() ? loc2.getBlockX() : loc1.getBlockX());
+        int bottomBlockX = (loc1.getBlockX() > loc2.getBlockX() ? loc2.getBlockX() : loc1.getBlockX());
+
+        int topBlockY = (loc1.getBlockY() < loc2.getBlockY() ? loc2.getBlockY() : loc1.getBlockY());
+        int bottomBlockY = (loc1.getBlockY() > loc2.getBlockY() ? loc2.getBlockY() : loc1.getBlockY());
+
+        int topBlockZ = (loc1.getBlockZ() < loc2.getBlockZ() ? loc2.getBlockZ() : loc1.getBlockZ());
+        int bottomBlockZ = (loc1.getBlockZ() > loc2.getBlockZ() ? loc2.getBlockZ() : loc1.getBlockZ());
+
+        for(int x = bottomBlockX; x <= topBlockX; x++)
+        {
+            for(int z = bottomBlockZ; z <= topBlockZ; z++)
+            {
+                for(int y = bottomBlockY; y <= topBlockY; y++)
+                {
+                    Block block = loc1.getWorld().getBlockAt(x, y, z);
+
+                    blocks.add(block);
+                }
+            }
+        }
+
+        return blocks;
     }
 
 //    /**
@@ -355,15 +428,6 @@ public final class PortServices {
         return new Tuple2<>(Response.DISABLED, new ArrayList<>());
     }
 
-    public Tuple2<Response, List<String>> getNearbyWarps(Location location) {
-        PortLoc portLoc = new PortLoc(location);
-        List<String> warpNames = portDataRepository.getWarpData().values().stream()
-                .filter(wd -> wd.getArrivalPoint().distance(new PortLoc(location)) < 20)
-                .map(wd -> wd.getArrivalPoint().distance(portLoc) + "m  : " + wd.getName())
-                .collect(Collectors.toList());
-        return new Tuple2<>(Response.SUCCESS, warpNames);
-    }
-
     public Tuple2<Response, PortData> getWarpData(String arg) {
         PortData portData = portDataRepository.getWarp(arg);
         Response response;
@@ -403,5 +467,143 @@ public final class PortServices {
         }
     }
 
+    public Tuple2<Response, PortData> selectNearest(UUID uuid, Location location, boolean select) {
+        Response response = null;
+        PortData portData = null;
+
+        PortLoc portLoc = new PortLoc(location);
+
+        Optional<PortData> portDataOpt = portDataRepository.getWarpData().values().stream()
+                .min(Comparator.comparingDouble(s -> s.getArrivalPoint().distance(portLoc)));
+
+        if (portDataOpt.isPresent()) {
+            portData = portDataOpt.get();
+
+            if (select) {
+                tempRepository.addSelected(uuid, portData.getName());
+            }
+            response = Response.SUCCESS;
+        } else {
+            response = Response.NO_PORT_IN_RANGE;
+        }
+        return new Tuple2<>(response, portData);
+    }
+
+    public <T extends Point3D> PortLoc getCorner(String world, T p1, T p2, boolean isTop) {
+        double cx = (p1.getX() + p2.getX()) /2;
+        double cy = (p1.getZ() + p2.getZ()) /2;
+        double angle = Math.toDegrees(Math.atan2(p1.getZ() - p2.getZ(), p2.getX() - p1.getX()));
+        double xr = (p1.getX() - cx) * Math.cos(angle) - (p1.getZ() -cy) * Math.sin(angle);
+        double yr = (p2.getX() - cx) * Math.sin(angle) - (p2.getZ() -cy) * Math.cos(angle);
+        double y = (isTop) ? p2.getY() : p1.getY();
+        return new PortLoc(world, xr, y, yr);
+    }
+
+    private PortLoc calculateOffsett(double x, double y, double cx, double cy, double angle) {
+        double xr = (x - cx) * Math.cos(angle) - (y -cy) * Math.sin(angle);
+        double yr = (x - cx) * Math.sin(angle) - (y -cy) * Math.cos(angle);
+        return new PortLoc("", xr, 0D, yr);
+    }
+
+    /**
+     * Gets a list of ports by page.
+     * @param request
+     * @return {@link Response#SUCCESS}, {@link Response#INVALID_PAGE}
+     */
+    public Tuple2<Response, List<String>> getPortsByPage(String request) {
+        List<String> list = new ArrayList<>();
+        Response response = null;
+        if (StringUtils.isNumeric(request)) {
+            int page = Integer.valueOf(request);
+            list = portDataRepository.getWarpData().values().stream()
+                    .map(Core::getName)
+                    .skip(page - 1)
+                    .limit(5)
+                    .collect(Collectors.toList());
+
+            response = Response.SUCCESS;
+        } else {
+            response = Response.INVALID_PAGE;
+        }
+        return new Tuple2<>(response, list);
+    }
+
+    /**
+     *
+     * @param location
+     * @return {@link Tuple2}<{@link Response#SUCCESS} {@link List}< {@link String}>
+     */
+    public Tuple2<Response, List<String>> getNearbyWarps(Location location) {
+        PortLoc portLoc = new PortLoc(location);
+        List<String> warpNames = portDataRepository.getWarpData().values().stream()
+                .filter(wd -> wd.getArrivalPoint().distance(new PortLoc(location)) < 20)
+                .map(wd -> wd.getArrivalPoint().distance(portLoc) + "m  : " + wd.getName())
+                .collect(Collectors.toList());
+        return new Tuple2<>(Response.SUCCESS, warpNames);
+    }
+
+
+
+
+    public Response expand(UUID uuid, Location location, int amount) {
+        if (tempRepository.getSelectedMap().containsKey(uuid)) {
+            String port = tempRepository.getSelectedMap().get(uuid);
+            PortData portData = portDataRepository.getWarp(port);
+            Direction direction = Direction.getDirection(location.getY());
+            PortLoc lower = portData.getFloorPoint();
+            PortLoc upper = portData.getCeilPoint();
+
+            switch (direction) {
+                case NORTH: // X + 1
+                    if (portData.getFloorPoint().getX() > portData.getCeilPoint().getX()) {
+                        portData.getFloorPoint().add(amount, 0, 0);
+                    } else {
+                        portData.getCeilPoint().add(amount, 0, 0);
+                    }
+                    break;
+                case EAST: //Z + 1
+                    if (portData.getFloorPoint().getZ() > portData.getCeilPoint().getZ()) {
+                        portData.getFloorPoint().add(0, 0, amount);
+                    } else {
+                        portData.getCeilPoint().add(0, 0, amount);
+                    }
+                    break;
+                case SOUTH: //X -1
+                    if (portData.getFloorPoint().getX() < portData.getCeilPoint().getX()) {
+                        portData.getFloorPoint().subtract(amount, 0, 0);
+                    } else {
+                        portData.getCeilPoint().subtract(amount, 0, 0);
+                    }
+                    break;
+                case WEST:
+                    if (portData.getFloorPoint().getZ() > portData.getCeilPoint().getZ()) {
+                        portData.getFloorPoint().add(0, 0, amount);
+                    } else {
+                        portData.getCeilPoint().add(0, 0, amount);
+                    }
+                    break;
+                case NORTHEAST:
+                    if (lower.getX() > upper.getX() && lower.getY() > upper.getZ()) {
+                        portData.getFloorPoint().add(amount, 0, amount);
+                    } else {
+                        portData.getFloorPoint().add(amount, 0, amount);
+                    }
+                    case SOUTHEAST: case NORTHWEST: case SOUTHWEST:
+                    return Response.INVALID_DIRECTION;
+            }
+
+        }
+        return null;
+    }
+
+    private double getDistance(PortLoc portLoc, PortLoc portLoc2) {
+        return Math.sqrt(Math.pow(portLoc2.getX() - portLoc.getX(), 2) + Math.pow(portLoc2.getZ() - portLoc.getZ(), 2));
+    }
+
+    private double getAngle(PortLoc portLoc, PortLoc portLoc2) {
+        double xDiff = portLoc.getX() - portLoc2.getX();
+        double zDiff = portLoc.getZ() - portLoc2.getZ();
+        return Math.toDegrees(Math.atan2(xDiff, zDiff));
+    }
 
 }

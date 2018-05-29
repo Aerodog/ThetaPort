@@ -8,7 +8,10 @@ import com.thetablock.thetaport.utils.cmdManager.Cmd;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
+import javax.swing.plaf.SeparatorUI;
 import java.util.List;
+
+import static com.thetablock.thetaport.enums.Response.*;
 
 @Cmd(name = "tpinfo", usage = "/tpinfo", aliases = {}, enabled = true, label = "", permission = "")
 public class WarpInfo extends CommandHandler implements Injectors {
@@ -18,30 +21,35 @@ public class WarpInfo extends CommandHandler implements Injectors {
     public boolean execute(CommandSender sender, String commandLabel, String[] args) {
         if (sender instanceof Player) {
             Player player = (Player) sender;
-
-            if (args.length == 0) {
-                Tuple2<Response, List<String>> warps = portServices.getNearbyWarps(player.getLocation());
-                warps.getValue().forEach(player::sendMessage);
+            Tuple2<Response, PortData> response = null;
+            if (args.length == 0) { //grabs the nearest one to the player.
+                response = portServices.selectNearest(null, player.getLocation(), false);
             } else {
                 Tuple2<Response, PortData> warpData = portServices.getWarpData(args[0]);
-                switch (warpData.getKey()) {
-                    case SUCCESS: {
-                        PortData wd = warpData.getValue();
-                        sender.sendMessage("Warp Name: " + wd.getName());
-                        sender.sendMessage("Warp To Point:" + wd.getArrivalPoint());
-                        sender.sendMessage("Corner: " + wd.getFloorPoint());
-                        sender.sendMessage("Corner: " + wd.getCeilPoint());
-                        sender.sendMessage("Enabled: true");
-                        sender.sendMessage("Linked Point: " + wd.getLinked());
-                        sender.sendMessage("Offset: " + wd.getOffset());
-                        sender.sendMessage("Arrival Message: " + wd.getArrivalMessage());
-                        sender.sendMessage("Departure Message: " + wd.getDepartureMessage());
-                    }
-                    case INVALID_PORT: {
-                        sender.sendMessage("The warp you are trying to load ");
-                    }
+            }
 
+            switch (response.getKey()) {
+                case SUCCESS:
+                    PortData wd = response.getValue();
+                    sender.sendMessage("Warp Name: " + wd.getName());
+                    sender.sendMessage("Warp To Point:" + wd.getArrivalPoint());
+                    sender.sendMessage("Corner: " + wd.getFloorPoint());
+                    sender.sendMessage("Corner: " + wd.getCeilPoint());
+                    sender.sendMessage("Enabled: true");
+                    sender.sendMessage("Linked Point: " + wd.getLinked());
+                    sender.sendMessage("Offset: " + wd.getOffset());
+                    sender.sendMessage("Arrival Message: " + wd.getArrivalMessage());
+                    sender.sendMessage("Departure Message: " + wd.getDepartureMessage());
+                    break;
+                case INVALID_PORT: {
+                    sender.sendMessage("The warp you are trying to load ");
+                    break;
                 }
+                case NO_PORT_IN_RANGE:
+                    sender.sendMessage("No ports in range.");
+                    break;
+
+
             }
         }
         return false;

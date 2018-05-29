@@ -1,10 +1,7 @@
 package com.thetablock.thetaport.utils.cmdManager;
 
-import org.apache.commons.cli.Options;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
-
-import java.util.ArrayList;
 import java.util.List;
 
 public class RegisteredCommand extends Command {

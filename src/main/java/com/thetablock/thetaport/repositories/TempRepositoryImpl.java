@@ -2,7 +2,9 @@ package com.thetablock.thetaport.repositories;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import com.google.common.collect.ImmutableMap;
 import com.google.inject.Singleton;
+import com.thetablock.thetaport.entities.PortData;
 import com.thetablock.thetaport.entities.PortState;
 import com.thetablock.thetaport.entities.Core;
 import com.thetablock.thetaport.enums.EnumPortState;
@@ -17,6 +19,7 @@ import java.util.stream.Collectors;
 public class TempRepositoryImpl implements TempRepository {
     private Map<UUID, PortState> playerPortState = new HashMap<>();
     private Map<UUID, Core> tempPorts = new HashMap<>();
+    private Map<UUID, String> selectedPort = new HashMap<>();
     private Cache<UUID, CommandLine> tempArgs = CacheBuilder.newBuilder()
             .concurrencyLevel(4)
             .expireAfterWrite(5, TimeUnit.MINUTES)
@@ -90,6 +93,21 @@ public class TempRepositoryImpl implements TempRepository {
     public void addCommandArgs(UUID uuid, CommandLine cmdLine) {
         tempArgs.put(uuid, cmdLine);
     }
+
+    @Override
+    public void addSelected(UUID uuid, String selected) {
+        selectedPort.put(uuid, selected);
+    }
+
+    @Override
+    public ImmutableMap<UUID, String> getSelectedMap() {
+        return ImmutableMap.copyOf(selectedPort);
+    }
+
+    public String getSelected(UUID uuid) {
+        return selectedPort.get(uuid);
+    }
+
 
 
 }

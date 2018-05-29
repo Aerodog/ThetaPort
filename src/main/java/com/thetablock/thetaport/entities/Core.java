@@ -15,6 +15,7 @@ public class Core {
     private PortLoc arrivalPoint;
     private PortLoc arrivalRedstone;
     private PortLoc departureRedstone;
+    private boolean isRailroadPort;
 
     @JsonIgnore
     public Core(String name, int offset, String linked, ItemStack requiredItem, PortLoc floorPoint, PortLoc ceilPoint, PortLoc arrivalPoint, PortLoc arrivalRedstone, PortLoc departureRedstone) {
@@ -41,6 +42,19 @@ public class Core {
         this.departureRedstone = departureRedstone;
     }
 
+    public Core(String name, int offset, String linked, ItemStack requiredItem, PortLoc floorPoint, PortLoc ceilPoint, PortLoc arrivalPoint, PortLoc arrivalRedstone, PortLoc departureRedstone, boolean isRailroadPort) {
+        this.name = name;
+        this.offset = offset;
+        this.linked = linked;
+        this.requiredItem = requiredItem;
+        this.floorPoint = floorPoint;
+        this.ceilPoint = ceilPoint;
+        this.arrivalPoint = arrivalPoint;
+        this.arrivalRedstone = arrivalRedstone;
+        this.departureRedstone = departureRedstone;
+        this.isRailroadPort = isRailroadPort;
+    }
+
     public String getName() {
         return name;
     }
@@ -51,6 +65,11 @@ public class Core {
 
     public String getLinked() {
         return linked;
+    }
+
+    public Core setLinked(String linked) {
+        this.linked = linked;
+        return this;
     }
 
     @JsonIgnore
@@ -115,5 +134,20 @@ public class Core {
     public Core setDepartureRedstone(PortLoc departureRedstone) {
         this.departureRedstone = departureRedstone;
         return this;
+    }
+
+    @Override
+    public String toString() {
+        return "Core{" +
+                "name='" + name + '\'' +
+                ", offset=" + offset +
+                ", linked='" + linked + '\'' +
+                ", requiredItem=" + requiredItem +
+                ", floorPoint=" + floorPoint +
+                ", ceilPoint=" + ceilPoint +
+                ", arrivalPoint=" + arrivalPoint +
+                ", arrivalRedstone=" + arrivalRedstone +
+                ", departureRedstone=" + departureRedstone +
+                '}';
     }
 }

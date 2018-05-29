@@ -1,6 +1,5 @@
 package com.thetablock.thetaport;
 
-import com.google.inject.Inject;
 import com.thetablock.thetaport.commands.*;
 import com.thetablock.thetaport.commands.Point;
 import com.thetablock.thetaport.listeners.ToolItemClickEvent;
@@ -19,12 +18,14 @@ public class ThetaPort  extends JavaPlugin implements Injectors {
         RegisteredCommands registeredCommands = injector.getInstance(RegisteredCommands.class);
         EventServices eventServices = injector.getInstance(EventServices.class);
 
+
         eventServices.startListenerEvents(this);
         Bukkit.getPluginManager().registerEvents(new ToolItemClickEvent(), this);
 
         registeredCommands.registerCommand(Create::new, this)
                 .registerCommand(Delete::new, this)
                 .registerCommand(Link::new, this)
+                .registerCommand(Select::new, this)
                 .registerCommand(ArrivalMessage::new, this)
                 .registerCommand(DepatureMessage::new, this)
                 .registerCommand(Point::new, this)

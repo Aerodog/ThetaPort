@@ -10,8 +10,7 @@ import com.google.common.collect.Multimap;
 
 import com.google.inject.Singleton;
 import com.thetablock.thetaport.entities.PortData;
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.FilenameUtils;
+
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -43,13 +42,19 @@ public class PortDataRepositoryImpl implements PortDataRepository {
 
     public PortDataRepositoryImpl() {
         File tempFile = new File(file + "/ports");
+
+        if (!tempFile.exists()) {
+            try {
+                tempFile.createNewFile();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
         if (null != tempFile.listFiles()) {
             Arrays.stream(tempFile.listFiles())
                     .filter(s->!s.getAbsolutePath().contains(".ser"))
-                    .filter(s-> !FilenameUtils.getExtension(tempFile + "").contains(".ser"))
                     .forEach(f -> {
                 //   PortData portData = gson.fromJson(f, PortData.class);
-                        System.out.println(f.getAbsoluteFile());
                     ObjectMapper mapper = new ObjectMapper();
                         try {
                     PortData portData = mapper.readValue(f, PortData.class);
@@ -66,7 +71,6 @@ public class PortDataRepositoryImpl implements PortDataRepository {
                     System.out.println("An error has occurred while trying to load ports.");
                 }
             });
-            warpDataMap.asMap().forEach((k,v)->System.out.println("DERP " + k));
             System.out.println("[INFO] ThetaPort has successfully loaded " + warpDataMap.size() + " ports.");
         }
     }
@@ -91,8 +95,6 @@ public class PortDataRepositoryImpl implements PortDataRepository {
     }
 
     private boolean saveData(PortData portData) {
-        System.out.println("DATA " + portData.getRequiredItem().toString());
-
         ObjectMapper mapper = new ObjectMapper();
         try {
             mapper.writeValue(new FileWriter(file + "/ports/" + portData.getName() + ".json"), portData);

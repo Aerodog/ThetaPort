@@ -7,7 +7,7 @@ import com.thetablock.thetaport.utils.cmdManager.Cmd;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
-@Cmd(name = "tpcreate", usage = "/tpcreate", aliases = {}, enabled = true, label = "", permission = "")
+@Cmd(name = "tpset", usage = "/tpcreate", aliases = {}, enabled = true, label = "", permission = "")
 public class Set extends CommandHandler implements Injectors  {
     private PortServices portServices = injector.getInstance(PortServices.class);
 
