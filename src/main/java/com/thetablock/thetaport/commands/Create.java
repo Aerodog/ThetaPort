@@ -58,7 +58,7 @@ public class Create extends CommandHandler implements Injectors {
 
                     ItemStack item = null;
 
-                    Response response = portServices.createPort(player.getUniqueId(), args[0], false, cmdLine.hasOption("d"), cmdLine.hasOption("os"), cmdLine, player.getInventory().getItemInMainHand());
+                    Response response = portServices.createPort(player.getUniqueId(), args[0], cmdLine, offsetUnparsed, player.getInventory().getItemInMainHand());
 
                     switch (response) {
                         case SUCCESS:

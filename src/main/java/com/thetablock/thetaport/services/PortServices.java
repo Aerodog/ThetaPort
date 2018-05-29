@@ -11,7 +11,6 @@ import com.thetablock.thetaport.enums.Response;
 import com.thetablock.thetaport.repositories.PortDataRepository;
 import com.thetablock.thetaport.utils.Tuple2;
 import javafx.geometry.Point3D;
-import net.minecraft.server.v1_12_R1.EnumDirection;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.lang.StringUtils;
 import org.bukkit.Location;
@@ -47,36 +46,37 @@ public final class PortServices {
         return Response.DISABLED;
     }
 
-    public Response createPort(UUID uuid, String name, boolean override, boolean isDisabled, boolean hasOffset, CommandLine cmdLine, ItemStack requiredItem) {
-//                               boolean hasRequiredItem, boolean hasArrivalMessage, boolean hasDepartureMessage, Optional<String> unparsedOffset, Optional<ItemStack> requiredItemOptional, boolean r, boolean reset) {
+    public Response createPort(UUID uuid, String name, CommandLine cmdLine, String unparsedOffset, ItemStack requiredItem) {
         Core core = tempRepository.getTempPort(uuid);
         int offset = 0;
 
-        if (core != null && cmdLine.hasOption("r")) {
-            core = null;
-        }
-
-        if (null == core || override) {
-            //checks to see if the warp already exists.
+        if (null == core || cmdLine.hasOption("r")) {
+            if (cmdLine.hasOption("r")) {
+                core = null;
+            }
             if (!portDataRepository.getWarpData().containsKey(name)) {
                 if (cmdLine.hasOption("os")) {
-                    if (null != cmdLine.getOptionValue("os")) {
+                    if (!unparsedOffset.isEmpty()) {
                         offset = parseOffset(cmdLine.getOptionValue("os"));
+
                     } else {
                         return Response.INVALID_OFFSET;
                     }
                 }
+                System.out.println("has " + cmdLine.hasOption("t"));
                 if (cmdLine.hasOption("t")) {
                     if (null == requiredItem || requiredItem.getType().equals(Material.AIR)) {
                         return Response.INVALID_REQUIRED_ITEM;
                     }
+                } else {
+                    requiredItem = null;
                 }
                 core = new Core(name, offset, null, requiredItem, null, null, null, null, null);
 
                 tempRepository.addTempPort(uuid, core);
                 return Response.SUCCESS;
             }
-            return Response.INVALID_OFFSET;
+            return Response.WARP_EXISTS;
         }
         return Response.TEMP_PORT_EXISTS;
     }

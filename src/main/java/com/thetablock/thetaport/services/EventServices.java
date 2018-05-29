@@ -25,7 +25,6 @@ import java.util.concurrent.*;
 
 import static com.thetablock.thetaport.enums.EnumPortState.JUST_WARPED;
 import static com.thetablock.thetaport.enums.EnumPortState.MISSING_REQUIRED_ITEM;
-import static com.thetablock.thetaport.enums.EnumPortState.WAITING_WARP;
 import static java.time.temporal.ChronoUnit.SECONDS;
 
 public final class EventServices {
@@ -60,7 +59,7 @@ public final class EventServices {
         final PortLoc portLoc = new PortLoc(player.getLocation());
         portDataRepository.getWarpData().values().stream()
                 .filter(pt->pt.getLinked() != null && !pt.getLinked().isEmpty())
-                .filter(pt->isWithinBounds(pt.getFloorPoint(), pt.getCeilPoint(), player.getLocation()))
+                .filter(pt-> isWithinBounds(pt.getFloorPoint(), pt.getCeilPoint(), player.getLocation()))
                 .filter(pt -> {
                     try {
                         Thread.sleep(2);
