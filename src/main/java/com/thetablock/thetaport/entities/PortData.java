@@ -15,7 +15,7 @@ public class PortData extends Core {
     //Port Data
 
     @JsonIgnore
-    private LocalDateTime lastPortTime;
+    private LocalDateTime lastPortTime = LocalDateTime.now();
 
     public PortData() {
         super("", 0, "", null, null, null, null, null, null);

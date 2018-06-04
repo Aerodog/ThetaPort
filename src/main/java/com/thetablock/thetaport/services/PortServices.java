@@ -56,9 +56,10 @@ public final class PortServices {
             }
             if (!portDataRepository.getWarpData().containsKey(name)) {
                 if (cmdLine.hasOption("os")) {
-                    if (!unparsedOffset.isEmpty()) {
-                        offset = parseOffset(cmdLine.getOptionValue("os"));
-
+                    String offsetUnparsed = cmdLine.getOptionValue("os");
+                    System.out.println("offset" + offsetUnparsed);
+                    if (null != offsetUnparsed && !offsetUnparsed.isEmpty()) {
+                        offset = parseOffset(offsetUnparsed);
                     } else {
                         return Response.INVALID_OFFSET;
                     }
@@ -245,17 +246,17 @@ public final class PortServices {
 
     private int parseOffset(String unparsedOffset) {
         int offset = 0;
-        if (!unparsedOffset.isEmpty()) {
-            List<String> splitter = Splitter.on("(?<=\\D)(?=\\d)").splitToList(unparsedOffset);
-            if (StringUtils.isNumeric(splitter.get(0))) {
-                offset = Integer.valueOf(splitter.get(0));
-                if (splitter.get(0).equalsIgnoreCase("m")) {
-                    offset = offset * 60;
-                } else if (splitter.get(0).equalsIgnoreCase("h")) {
-                    offset = offset * 120;
-                } else if (splitter.get(0).equalsIgnoreCase("d")) {
-                    offset = offset * 86400;
-                }
+        List<String> splitter = Splitter.fixedLength(unparsedOffset.length() -1).splitToList(unparsedOffset);
+        System.out.println(splitter);
+        if (StringUtils.isNumeric(splitter.get(0))) {
+            System.out.println("IT WORKS");
+            offset = Integer.valueOf(splitter.get(0));
+            if (splitter.get(0).equalsIgnoreCase("m")) {
+                offset = offset * 60;
+            } else if (splitter.get(0).equalsIgnoreCase("h")) {
+                offset = offset * 120;
+            } else if (splitter.get(0).equalsIgnoreCase("d")) {
+                offset = offset * 86400;
             }
         }
         return offset;
@@ -336,7 +337,6 @@ public final class PortServices {
         PortData portData = portDataRepository.getWarp(portName);
 
         if (null != portData) {
-            message = message.replaceAll("&", "§");
             portData.setDepartureMessage(message);
             portDataRepository.deleteWarp(portName);
             portDataRepository.update(portData);

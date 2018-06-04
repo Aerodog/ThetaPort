@@ -19,7 +19,8 @@ public class DepatureMessage extends CommandHandler implements Injectors {
         if (sender.hasPermission(permission)) {
             if (args.length > 1) {
                 ArrayUtils.remove(args, 0);
-                String message = String.join("", args);
+                String message = String.join(" ", args);
+                message = message.replace(args[0], "");
                 Response response = portServices.setDepatureMessage(args[0], message);
 
                 switch (response) {

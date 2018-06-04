@@ -20,7 +20,7 @@ public class ArrivalMessage extends CommandHandler implements Injectors {
             if (args.length > 1) {
 
                 ArrayUtils.remove(args, 0);
-                String message = String.join("", args);
+                String message = String.join(" ", args);
                 Response response = portServices.setArrivalMessage(args[0], message);
 
                 switch (response) {

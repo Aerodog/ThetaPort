@@ -86,11 +86,15 @@ public final class EventServices {
                 })
                 .forEach(pt -> {
                     if (pt.getOffset() > 0) {
-                        if (ChronoUnit.SECONDS.between(pt.getLastPortTime(), LocalTime.now()) > 1) {
+                        if (ChronoUnit.SECONDS.between(pt.getLastPortTime(), LocalDateTime.now()) > 1) {
                             LocalDateTime nextToWarp = pt.getLastPortTime().plusSeconds(pt.getOffset());
-                            String departureMessage = pt.getDepartureMessage().replace("&t", getTimeRemaining(LocalDateTime.now(), nextToWarp));
-                            departureMessage = departureMessage.replace("&", "§");
-                            player.sendMessage(departureMessage);
+                            if (null != pt.getDepartureMessage() && !pt.getDepartureMessage().isEmpty()) {
+                                String departureMessage = pt.getDepartureMessage().replace("&t", getTimeRemaining(LocalDateTime.now(), nextToWarp));
+                                departureMessage = departureMessage.replace("&", "§");
+                                player.sendMessage(departureMessage);
+                            }
+
+
                         }
                     }
                     tempRepository.addActivePlayer(pt.getName(), player, EnumPortState.WAITING_WARP);
@@ -123,8 +127,6 @@ public final class EventServices {
 
 
     private String parseTime(LocalTime nextExecutionTime) {
-
-        ///
         final LocalDateTime now = LocalDateTime.now();
         long hours = ChronoUnit.HOURS.between(now, nextExecutionTime);
         long minutes = ChronoUnit.MINUTES.between(now, nextExecutionTime);
@@ -238,15 +240,17 @@ public final class EventServices {
         tempRepository.tempWarpMaps().values().stream()
                 .filter(Objects::nonNull)
                 .filter(portState -> portState.getWarpName().equalsIgnoreCase(portName))
+//                .filter(pt -> {
+//                    if (pt.getEnumPortState() != null) {
+//                        return !pt.getEnumPortState().equals(MISSING_REQUIRED_ITEM);
+//                    }
+//                    return true;
+//                })
                 .filter(pt -> {
                     if (pt.getEnumPortState() != null) {
-                        return !pt.getEnumPortState().equals(MISSING_REQUIRED_ITEM);
-                    }
-                    return true;
-                })
-                .filter(pt -> {
-                    if (pt.getEnumPortState() != null) {
-                        return !pt.getEnumPortState().equals(JUST_WARPED);
+                        if (pt.getEnumPortState().equals(JUST_WARPED) || pt.getEnumPortState().equals(MISSING_REQUIRED_ITEM)) {
+                            return false;
+                        }
                     }
                     return true;
                 })
